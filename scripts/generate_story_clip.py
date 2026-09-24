@@ -71,7 +71,13 @@ def generate_story() -> tuple[str, str]:
         timeout=60,
     )
     resp.raise_for_status()
-    text = resp.json()["content"][0]["text"].strip()
+    content_blocks = resp.json()["content"]
+    # Some models emit a "thinking" block ahead of the actual "text" block,
+    # so pick out the text block(s) rather than assuming content[0] is it.
+    text_blocks = [b["text"] for b in content_blocks if b.get("type") == "text"]
+    if not text_blocks:
+        raise RuntimeError(f"No text content block in response: {content_blocks!r}")
+    text = "\n".join(text_blocks).strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     if len(lines) < 2:
         raise RuntimeError(f"Unexpected story generation response: {text!r}")

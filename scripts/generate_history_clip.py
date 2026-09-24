@@ -728,7 +728,7 @@ def assemble_video(
     vf = (
         f"subtitles={captions_path.as_posix()}:force_style='FontName=DejaVu Sans,"
         f"FontSize=16,Bold=1,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
-        f"BorderStyle=1,Outline=2,Alignment=2,MarginV=100',"
+        f"BorderStyle=1,Outline=2,Alignment=2,MarginV=45',"
         f"drawtext=fontfile={font_posix}:textfile={title_file.as_posix()}:"
         f"fontsize={title_fontsize(title)}:fontcolor=white:borderw=3:"
         f"bordercolor=black:box=1:boxcolor=black@0.35:boxborderw=20:"

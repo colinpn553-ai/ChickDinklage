@@ -236,151 +236,270 @@ def assign_beat_times(
 
 
 # --- Crude scene illustrations -------------------------------------------
-# Every function draws onto `draw` (a PIL ImageDraw for a VIDEO_WIDTH x
-# VIDEO_HEIGHT canvas) using only `t` (seconds) for animation. Deliberately
-# crude: thin outline shapes, no fill detail, no attempt at real likenesses.
+# Every function draws a FULL composed scene (sky, sun/moon, hills, ground,
+# then foreground content) onto `draw`, using only `t` (seconds) for
+# animation. Deliberately crude line-art -- but a full environment per
+# scene, not one icon on a flat color, so the frame reads as a place with
+# things happening in it rather than a static graphic.
 
 LINE = (235, 225, 210)
+HORIZON_FRAC = 0.62
 
 
-def _stick_figure(draw, x, y, t, phase=0.0, scale=1.0, arms_up=False):
+def _lerp_color(c0, c1, frac):
+    return tuple(int(c0[i] + (c1[i] - c0[i]) * frac) for i in range(3))
+
+
+def draw_backdrop(draw, W, H, sky_top, sky_horizon, ground_color,
+                   hills_color=None, sun=False, sun_color=(255, 205, 130), bands=18):
+    """Sky gradient + optional sun + optional hills + ground plane. Returns
+    horizon_y so callers can place foreground content grounded on it."""
+    horizon_y = H * HORIZON_FRAC
+    band_h = horizon_y / bands
+    for i in range(bands):
+        frac = i / bands
+        color = _lerp_color(sky_top, sky_horizon, frac)
+        draw.rectangle([0, band_h * i, W, band_h * (i + 1) + 1], fill=color)
+
+    if sun:
+        sx, sy, r = W * 0.78, horizon_y * 0.32, 68
+        for i, rr in enumerate([r * 1.7, r * 1.3, r]):
+            shade = tuple(min(255, c + i * 18) for c in sun_color)
+            draw.ellipse([sx - rr, sy - rr, sx + rr, sy + rr], fill=shade)
+
+    if hills_color:
+        pts = [(0, horizon_y)]
+        for i in range(7):
+            x = W * i / 6
+            yoff = 45 * math.sin(i * 1.7 + 0.4)
+            pts.append((x, horizon_y - 35 - yoff))
+        pts.append((W, horizon_y))
+        draw.polygon(pts, fill=hills_color)
+
+    draw.rectangle([0, horizon_y, W, H], fill=ground_color)
+    return horizon_y
+
+
+def _tree(draw, x, base_y, t, phase=0.0, height=180, color=LINE):
+    sway = math.sin(t * 1.5 + phase) * 6
+    top = (x + sway, base_y - height)
+    draw.polygon([top, (x - height * 0.25, base_y), (x + height * 0.25, base_y)], outline=color, width=4)
+    draw.line([top, (x + sway * 0.5, base_y)], fill=color, width=4)
+
+
+def _stick_figure(draw, x, foot_y, t, phase=0.0, scale=1.0, arms_up=False, color=LINE):
+    """x, foot_y = ground position (feet). Figure is built upward from there."""
+    total_h = 169 * scale
+    y = foot_y - total_h  # head-top, matching the original layout math
     r = 22 * scale
-    draw.ellipse([x - r, y, x + r, y + 2 * r], outline=LINE, width=3)
+    draw.ellipse([x - r, y, x + r, y + 2 * r], outline=color, width=3)
     body_top = y + 2 * r
     body_bot = body_top + 70 * scale
-    draw.line([(x, body_top), (x, body_bot)], fill=LINE, width=3)
+    draw.line([(x, body_top), (x, body_bot)], fill=color, width=3)
     if arms_up:
-        draw.line([(x, body_top + 15 * scale), (x - 30 * scale, body_top - 15 * scale)], fill=LINE, width=3)
-        draw.line([(x, body_top + 15 * scale), (x + 30 * scale, body_top - 15 * scale)], fill=LINE, width=3)
+        draw.line([(x, body_top + 15 * scale), (x - 30 * scale, body_top - 15 * scale)], fill=color, width=3)
+        draw.line([(x, body_top + 15 * scale), (x + 30 * scale, body_top - 15 * scale)], fill=color, width=3)
     else:
         sway = math.sin(t * 2 + phase) * 8 * scale
-        draw.line([(x, body_top + 15 * scale), (x - 25 * scale + sway, body_top + 40 * scale)], fill=LINE, width=3)
-        draw.line([(x, body_top + 15 * scale), (x + 25 * scale - sway, body_top + 40 * scale)], fill=LINE, width=3)
+        draw.line([(x, body_top + 15 * scale), (x - 25 * scale + sway, body_top + 40 * scale)], fill=color, width=3)
+        draw.line([(x, body_top + 15 * scale), (x + 25 * scale - sway, body_top + 40 * scale)], fill=color, width=3)
     step = math.sin(t * 3 + phase) * 15 * scale
-    draw.line([(x, body_bot), (x - 20 * scale + step, body_bot + 55 * scale)], fill=LINE, width=3)
-    draw.line([(x, body_bot), (x + 20 * scale - step, body_bot + 55 * scale)], fill=LINE, width=3)
+    draw.line([(x, body_bot), (x - 20 * scale + step, body_bot + 55 * scale)], fill=color, width=3)
+    draw.line([(x, body_bot), (x + 20 * scale - step, body_bot + 55 * scale)], fill=color, width=3)
 
+
+def _building(draw, cx, base_y, t, width=240, height=330, color=LINE, flag=False):
+    bx0, bx1 = cx - width / 2, cx + width / 2
+    by0, by1 = base_y - height, base_y
+    draw.rectangle([bx0, by0, bx1, by1], outline=color, width=5)
+    n_cols = max(int(width / 60), 2)
+    for col in range(n_cols):
+        cxi = bx0 + width * (col + 0.5) / n_cols
+        draw.line([(cxi, by0 + 20), (cxi, by1)], fill=color, width=3)
+    for row_y in [by0 + height * 0.35, by0 + height * 0.65]:
+        draw.line([(bx0, row_y), (bx1, row_y)], fill=color, width=2)
+    draw.polygon([(bx0 - 20, by0), (bx1 + 20, by0), (cx, by0 - width * 0.3)], outline=color, width=5)
+    if flag:
+        flag_sway = math.sin(t * 3) * 8
+        draw.line([(cx, by0 - width * 0.3), (cx, by0 - width * 0.3 - 80)], fill=color, width=3)
+        top = by0 - width * 0.3 - 80
+        draw.polygon([(cx, top), (cx + 50 + flag_sway, top + 15), (cx, top + 30)], outline=color, width=3)
+
+
+# --- Scene palettes (sky top, sky horizon, ground, hills or None) --------
 
 def draw_jungle(draw, t, W, H):
-    for i, x in enumerate([W * 0.15, W * 0.37, W * 0.63, W * 0.85]):
-        sway = math.sin(t * 1.5 + i) * 6
-        base_y = H * 0.42
-        draw.polygon([(x + sway, base_y), (x - 45, base_y + 180), (x + 45, base_y + 180)], outline=LINE, width=4)
-        draw.line([(x + sway, base_y), (x + sway, base_y + 180)], fill=LINE, width=4)
-    _stick_figure(draw, W * 0.42, H * 0.58, t, phase=0)
-    _stick_figure(draw, W * 0.56, H * 0.58, t, phase=1.2)
+    horizon = draw_backdrop(draw, W, H, (110, 160, 210), (235, 200, 150), (70, 110, 55),
+                             hills_color=(50, 85, 45), sun=True)
+    for i, xf in enumerate([0.1, 0.26, 0.74, 0.9]):
+        _tree(draw, W * xf, horizon + 60, t, phase=i, height=150 + 20 * (i % 2))
+    for i, xf in enumerate([0.42, 0.5, 0.58]):
+        _tree(draw, W * xf, horizon + 130, t, phase=i + 2, height=110)
+    _stick_figure(draw, W * 0.42, horizon + 150, t, phase=0)
+    _stick_figure(draw, W * 0.56, horizon + 150, t, phase=1.2)
 
 
 def draw_building(draw, t, W, H):
-    bx0, by0, bx1, by1 = W * 0.28, H * 0.32, W * 0.72, H * 0.62
-    draw.rectangle([bx0, by0, bx1, by1], outline=LINE, width=5)
-    n_cols = 4
-    for col in range(n_cols):
-        cx = bx0 + (bx1 - bx0) * (col + 0.5) / n_cols
-        draw.line([(cx, by0 + 20), (cx, by1)], fill=LINE, width=4)
-    draw.polygon([(bx0 - 20, by0), (bx1 + 20, by0), ((bx0 + bx1) / 2, by0 - 80)], outline=LINE, width=5)
-    flag_sway = math.sin(t * 3) * 8
-    pole_x = (bx0 + bx1) / 2
-    draw.line([(pole_x, by0 - 80), (pole_x, by0 - 160)], fill=LINE, width=3)
-    draw.polygon([(pole_x, by0 - 160), (pole_x + 50 + flag_sway, by0 - 145), (pole_x, by0 - 130)], outline=LINE, width=3)
+    horizon = draw_backdrop(draw, W, H, (150, 190, 225), (220, 225, 220), (95, 95, 100), sun=True)
+    _building(draw, W * 0.22, horizon + 40, t, width=140, height=200)
+    _building(draw, W * 0.82, horizon + 40, t, width=150, height=230)
+    _building(draw, W * 0.5, horizon + 60, t, width=280, height=340, flag=True)
+    for i, xf in enumerate([0.15, 0.35, 0.65, 0.85]):
+        _stick_figure(draw, W * xf, horizon + 60, t, phase=i, scale=0.55)
 
 
 def draw_crowd(draw, t, W, H):
-    positions = [(0.25, 0), (0.4, 0.6), (0.55, 0), (0.7, 0.6), (0.35, 1.1), (0.6, 1.1)]
-    for i, (fx, off) in enumerate(positions):
-        arms_up = i % 2 == 0
-        _stick_figure(draw, W * fx, H * 0.5 + off * 20, t, phase=i * 0.7, scale=0.85, arms_up=arms_up)
+    horizon = draw_backdrop(draw, W, H, (140, 175, 215), (230, 210, 180), (110, 100, 90), sun=True)
+    _building(draw, W * 0.5, horizon + 20, t, width=220, height=260)
+    rows = [(horizon + 90, 0.9), (horizon + 150, 1.0)]
+    positions = [0.12, 0.24, 0.36, 0.48, 0.6, 0.72, 0.84]
+    for row_i, (row_y, scale) in enumerate(rows):
+        for i, xf in enumerate(positions):
+            arms_up = (i + row_i) % 2 == 0
+            _stick_figure(draw, W * xf + (20 if row_i else 0), row_y, t, phase=i * 0.6 + row_i, scale=scale, arms_up=arms_up)
 
 
 def draw_soldiers(draw, t, W, H):
-    for i, fx in enumerate([0.32, 0.5, 0.68]):
-        x, y = W * fx, H * 0.5
+    horizon = draw_backdrop(draw, W, H, (140, 130, 130), (200, 170, 140), (90, 80, 65), hills_color=(60, 55, 55))
+    _building(draw, W * 0.15, horizon + 20, t, width=120, height=160, color=(180, 170, 165))
+    for i, xf in enumerate([0.28, 0.42, 0.56, 0.7, 0.84]):
+        x, foot_y = W * xf, horizon + 130
+        y = foot_y - 169
         r = 20
         draw.ellipse([x - r, y, x + r, y + 2 * r], outline=LINE, width=3)
-        draw.line([(x - r, y + 4), (x + r, y + 4)], fill=LINE, width=3)  # helmet line
+        draw.line([(x - r, y + 4), (x + r, y + 4)], fill=LINE, width=3)
         body_top, body_bot = y + 2 * r, y + 2 * r + 70
         draw.line([(x, body_top), (x, body_bot)], fill=LINE, width=3)
-        draw.line([(x, body_top + 20), (x + 50, body_top + 5)], fill=LINE, width=4)  # rifle
+        draw.line([(x, body_top + 20), (x + 50, body_top + 5)], fill=LINE, width=4)
         step = math.sin(t * 2 + i) * 10
         draw.line([(x, body_bot), (x - 18 + step, body_bot + 55)], fill=LINE, width=3)
         draw.line([(x, body_bot), (x + 18 - step, body_bot + 55)], fill=LINE, width=3)
 
 
 def draw_map(draw, t, W, H):
-    cx, cy = W / 2, H * 0.5
+    # Parchment backdrop rather than sky -- reads as "a map", not "a place".
+    draw.rectangle([0, 0, W, H], fill=(60, 45, 25))
+    # Margins sized per-axis to comfortably survive the Ken Burns pan in
+    # render_frames, so the border/compass never get cropped out of frame.
+    mx, my = W * (ZOOM_MARGIN + 0.06), H * (ZOOM_MARGIN + 0.06)
+    draw.rectangle([mx, my, W - mx, H - my], outline=LINE, width=4)
+    for i in range(4):
+        yy = my + 40 + i * 30
+        draw.line([(mx + 20, yy), (mx + 20, yy)], fill=LINE, width=1)
+    cx, cy = W / 2, H * 0.48
     pts = []
     for i in range(10):
         ang = i / 10 * 2 * math.pi
-        rad = 180 + 20 * math.sin(ang * 3 + t * 0.5)
-        pts.append((cx + rad * math.cos(ang), cy + rad * 0.7 * math.sin(ang)))
+        rad = 190 + 22 * math.sin(ang * 3 + t * 0.5)
+        pts.append((cx + rad * math.cos(ang), cy + rad * 0.75 * math.sin(ang)))
     draw.polygon(pts, outline=LINE, width=4)
     dash_phase = int(t * 4) % 2
-    draw.line([(cx, cy - 150), (cx, cy + 150)], fill=LINE, width=(4 if dash_phase else 2))
-    draw.ellipse([cx - 8, cy - 8, cx + 8, cy + 8], fill=LINE)
+    draw.line([(cx, cy - 160), (cx, cy + 160)], fill=LINE, width=(4 if dash_phase else 2))
+    draw.ellipse([cx - 9, cy - 9, cx + 9, cy + 9], fill=LINE)
+    # small compass rose, bottom-right, for map flavor
+    rcx, rcy, rr = W - mx - 70, H - my - 70, 40
+    draw.ellipse([rcx - rr, rcy - rr, rcx + rr, rcy + rr], outline=LINE, width=2)
+    draw.line([(rcx, rcy - rr), (rcx, rcy + rr)], fill=LINE, width=2)
+    draw.line([(rcx - rr, rcy), (rcx + rr, rcy)], fill=LINE, width=2)
 
 
 def draw_meeting(draw, t, W, H):
-    tx0, ty, tx1 = W * 0.25, H * 0.55, W * 0.75
+    # Indoor scene: warm wall instead of sky, a window for depth.
+    draw.rectangle([0, 0, W, H], fill=(70, 45, 35))
+    floor_y = H * HORIZON_FRAC + 60
+    draw.rectangle([0, floor_y, W, H], fill=(55, 35, 28))
+    wx0, wy0, wx1, wy1 = W * 0.68, H * 0.18, W * 0.92, H * 0.4
+    draw.rectangle([wx0, wy0, wx1, wy1], outline=LINE, width=3)
+    draw.line([((wx0 + wx1) / 2, wy0), ((wx0 + wx1) / 2, wy1)], fill=LINE, width=2)
+    tx0, ty, tx1 = W * 0.2, floor_y - 90, W * 0.8
     draw.line([(tx0, ty), (tx1, ty)], fill=LINE, width=5)
-    for i, fx in enumerate([0.32, 0.45, 0.58, 0.7]):
-        _stick_figure(draw, W * fx, ty - 90, t, phase=i * 0.9, scale=0.6)
+    draw.line([(tx0 + 10, ty), (tx0 + 10, ty + 70)], fill=LINE, width=4)
+    draw.line([(tx1 - 10, ty), (tx1 - 10, ty + 70)], fill=LINE, width=4)
+    for i, xf in enumerate([0.3, 0.42, 0.58, 0.7]):
+        _stick_figure(draw, W * xf, ty, t, phase=i * 0.9, scale=0.55)
 
 
 def draw_leader(draw, t, W, H):
-    cx, cy = W / 2, H * 0.42
+    horizon = draw_backdrop(draw, W, H, (90, 60, 70), (200, 110, 70), (55, 40, 40), sun=True,
+                             sun_color=(230, 120, 90))
+    for i, xf in enumerate([0.15, 0.3, 0.68, 0.85]):
+        _stick_figure(draw, W * xf, horizon + 140, t, phase=i * 1.3, scale=0.5)
+    cx = W / 2
     bob = math.sin(t * 1.5) * 4
-    r = 90
-    draw.ellipse([cx - r, cy - r + bob, cx + r, cy + r + bob], outline=LINE, width=5)
-    draw.rectangle([cx - 140, cy + r + bob, cx + 140, cy + r + 260 + bob], outline=LINE, width=5)
-    draw.rectangle([cx - 160, cy + r + 260 + bob, cx + 160, cy + r + 290 + bob], outline=LINE, width=4)
+    ped_y = horizon + 150
+    draw.rectangle([cx - 90, ped_y - 40, cx + 90, ped_y], outline=LINE, width=4)
+    foot_y = ped_y - 40
+    r = 55
+    head_cy = foot_y - 210 + bob
+    draw.ellipse([cx - r, head_cy - r, cx + r, head_cy + r], outline=LINE, width=5)
+    draw.rectangle([cx - 85, head_cy + r, cx + 85, foot_y], outline=LINE, width=5)
 
 
 def draw_fire(draw, t, W, H):
-    bx0, by0, bx1, by1 = W * 0.3, H * 0.4, W * 0.7, H * 0.62
-    jag = [(bx0, by0)]
-    for i in range(5):
-        jag.append((bx0 + (bx1 - bx0) * i / 4, by0 - 20 * (i % 2)))
-    jag.append((bx1, by0))
+    horizon = draw_backdrop(draw, W, H, (60, 30, 30), (120, 50, 35), (40, 30, 28))
+    bx0, by0, bx1 = W * 0.3, horizon - 10, W * 0.7
+    by1 = horizon + 140
     draw.rectangle([bx0, by0, bx1, by1], outline=LINE, width=4)
+    draw.line([(bx0, by0), (bx0 + 30, by0 - 40)], fill=LINE, width=3)
+    draw.line([(bx1, by0), (bx1 - 40, by0 - 30)], fill=LINE, width=3)
     for i in range(3):
         fx = bx0 + (bx1 - bx0) * (i + 0.5) / 3
         flick = math.sin(t * 8 + i) * 10
         draw.polygon(
             [(fx, by0), (fx - 20, by0 - 60 + flick), (fx, by0 - 100 + flick), (fx + 20, by0 - 60 + flick)],
-            outline=LINE, width=3,
+            outline=(255, 190, 120), width=3,
         )
+        smoke_y = by0 - 100 - ((t * 30 + i * 40) % 200)
+        smoke_x = fx + math.sin(t * 1.2 + i) * 15
+        draw.ellipse([smoke_x - 12, smoke_y - 12, smoke_x + 12, smoke_y + 12], outline=(150, 150, 150), width=2)
+    _stick_figure(draw, W * 0.18, horizon + 130, t, phase=0, scale=0.6)
 
 
 def draw_prison(draw, t, W, H):
-    bx0, by0, bx1, by1 = W * 0.3, H * 0.4, W * 0.7, H * 0.65
+    horizon = draw_backdrop(draw, W, H, (90, 95, 100), (150, 150, 145), (70, 68, 65))
+    bx0, by0, bx1, by1 = W * 0.28, horizon - 60, W * 0.72, horizon + 150
     draw.rectangle([bx0, by0, bx1, by1], outline=LINE, width=4)
-    for i in range(6):
-        bx = bx0 + (bx1 - bx0) * i / 5
-        draw.line([(bx, by0 - 20), (bx, by1 + 20)], fill=LINE, width=4)
-    _stick_figure(draw, (bx0 + bx1) / 2, by0 + 20, t, scale=0.6)
+    for i in range(7):
+        bx = bx0 + (bx1 - bx0) * i / 6
+        draw.line([(bx, by0 - 15), (bx, by1 + 15)], fill=LINE, width=4)
+    draw.rectangle([bx0 - 60, by0 + 20, bx0 - 20, by1], outline=LINE, width=3)  # watchtower
+    _stick_figure(draw, (bx0 + bx1) / 2, by1 - 10, t, scale=0.6)
 
 
 def draw_mosque(draw, t, W, H):
-    cx, base_y = W / 2, H * 0.55
-    draw.rectangle([cx - 100, base_y, cx + 100, base_y + 150], outline=LINE, width=4)
-    draw.arc([cx - 100, base_y - 100, cx + 100, base_y + 20], 180, 360, fill=LINE, width=4)
-    draw.arc([cx - 15, base_y - 190, cx + 15, base_y - 160], 200, 520, fill=LINE, width=3)
+    horizon = draw_backdrop(draw, W, H, (110, 165, 215), (250, 210, 150), (190, 165, 110), sun=True)
+    cx, base_y = W / 2, horizon + 150
+    draw.rectangle([cx - 100, base_y - 150, cx + 100, base_y], outline=LINE, width=4)
+    draw.arc([cx - 100, base_y - 250, cx + 100, base_y - 130], 180, 360, fill=LINE, width=4)
+    draw.line([(cx, base_y - 250), (cx, base_y - 290)], fill=LINE, width=3)
+    draw.arc([cx - 12, base_y - 305, cx + 12, base_y - 281], 200, 520, fill=LINE, width=3)
+    for mx in [cx - 150, cx + 150]:
+        draw.line([(mx, base_y), (mx, base_y - 220)], fill=LINE, width=4)
+        draw.ellipse([mx - 15, base_y - 245, mx + 15, base_y - 215], outline=LINE, width=3)
+    _tree(draw, cx - 220, base_y + 20, t, height=90, phase=0.5)
 
 
 def draw_church(draw, t, W, H):
-    cx, base_y = W / 2, H * 0.55
-    draw.rectangle([cx - 90, base_y, cx + 90, base_y + 150], outline=LINE, width=4)
-    draw.polygon([(cx - 20, base_y - 120), (cx + 20, base_y - 120), (cx, base_y - 190)], outline=LINE, width=4)
-    draw.line([(cx, base_y - 190), (cx, base_y - 230)], fill=LINE, width=3)
-    draw.line([(cx - 15, base_y - 215), (cx + 15, base_y - 215)], fill=LINE, width=3)
+    horizon = draw_backdrop(draw, W, H, (130, 170, 210), (210, 210, 200), (70, 95, 60), hills_color=(45, 70, 40))
+    cx, base_y = W / 2, horizon + 150
+    draw.rectangle([cx - 90, base_y - 150, cx + 90, base_y], outline=LINE, width=4)
+    draw.polygon([(cx - 20, base_y - 270), (cx + 20, base_y - 270), (cx, base_y - 340)], outline=LINE, width=4)
+    draw.line([(cx, base_y - 340), (cx, base_y - 380)], fill=LINE, width=3)
+    draw.line([(cx - 15, base_y - 365), (cx + 15, base_y - 365)], fill=LINE, width=3)
+    for i in range(4):
+        fx = cx - 200 + i * 40
+        draw.line([(fx, base_y), (fx, base_y - 30)], fill=LINE, width=2)  # simple fence
 
 
 def draw_exodus(draw, t, W, H):
-    y = H * 0.55
-    for i in range(5):
-        x = ((t * 60 + i * 90) % (W + 150)) - 75
+    horizon = draw_backdrop(draw, W, H, (110, 100, 100), (170, 140, 110), (95, 80, 65), hills_color=(65, 55, 50))
+    draw.polygon([(W * 0.3, horizon - 20), (W * 0.4, horizon - 90), (W * 0.55, horizon - 20)],
+                 outline=(80, 70, 65), width=3)  # distant damaged silhouette, far and small
+    y = horizon + 140
+    for i in range(6):
+        x = ((t * 55 + i * 90) % (W + 150)) - 75
         _stick_figure(draw, x, y, t, phase=i * 0.5, scale=0.65)
-        draw.ellipse([x - 10, y + 50, x + 15, y + 70], outline=LINE, width=2)  # bundle
+        draw.ellipse([x - 10, y - 60, x + 15, y - 40], outline=LINE, width=2)  # bundle
 
 
 SCENES = {
@@ -398,21 +517,52 @@ SCENES = {
     "exodus": draw_exodus,
 }
 
+# Slow "Ken Burns" zoom/pan: scenes are drawn oversized and cropped to the
+# final frame, drifting over each beat's duration, so nothing sits static
+# on screen even for a still-image-style composition.
+ZOOM_MARGIN = 0.16
+
 
 def render_frames(beats: list[dict], duration: float, frames_dir: Path) -> None:
     frames_dir.mkdir(parents=True, exist_ok=True)
     n_frames = int(duration * FPS) + 1
-    BG = (35, 10, 10)
+    big_W = int(VIDEO_WIDTH * (1 + ZOOM_MARGIN))
+    big_H = int(VIDEO_HEIGHT * (1 + ZOOM_MARGIN))
+    max_offset_x = big_W - VIDEO_WIDTH
+    max_offset_y = big_H - VIDEO_HEIGHT
+
     for i in range(n_frames):
         t = i / FPS
         scene_fn = SCENES["map"]
-        for beat in beats:
+        beat_idx = 0
+        active_beat = beats[-1] if beats else {"start": 0, "end": duration}
+        for bi, beat in enumerate(beats):
             if beat["start"] <= t < beat["end"] or (beat is beats[-1] and t >= beat["start"]):
                 scene_fn = SCENES.get(beat["scene"], SCENES["map"])
+                active_beat = beat
+                beat_idx = bi
                 break
-        img = Image.new("RGB", (VIDEO_WIDTH, VIDEO_HEIGHT), BG)
+
+        img = Image.new("RGB", (big_W, big_H), (35, 10, 10))
         draw = ImageDraw.Draw(img)
-        scene_fn(draw, t, VIDEO_WIDTH, VIDEO_HEIGHT)
+        scene_fn(draw, t, big_W, big_H)
+
+        b_start, b_end = active_beat["start"], active_beat["end"]
+        b_dur = max(b_end - b_start, 0.01)
+        local_frac = min(max((t - b_start) / b_dur, 0.0), 1.0)
+        # Alternate zoom-in / zoom-out and pan corner by beat for variety.
+        progress = local_frac if beat_idx % 2 == 0 else (1 - local_frac)
+        corner_x = 1.0 if beat_idx % 3 in (0, 1) else 0.0
+        corner_y = 1.0 if beat_idx % 2 == 0 else 0.0
+        # Gentle drift only -- centered by default, nudged toward a corner
+        # by at most ~30% of the available margin, so framing elements
+        # near the edges of a scene (borders, distant buildings) never
+        # get cropped out.
+        offset_x = max_offset_x * (0.5 + (corner_x - 0.5) * 0.6 * progress)
+        offset_y = max_offset_y * (0.5 + (corner_y - 0.5) * 0.6 * progress)
+        crop_box = (offset_x, offset_y, offset_x + VIDEO_WIDTH, offset_y + VIDEO_HEIGHT)
+        img = img.crop(crop_box)
+
         img.save(frames_dir / f"frame_{i:05d}.png")
 
 

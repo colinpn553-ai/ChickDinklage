@@ -26,6 +26,7 @@ import json
 import math
 import os
 import random
+import re
 import subprocess
 import sys
 import tempfile
@@ -191,15 +192,79 @@ def srt_timestamp(t: float) -> str:
     return f"{h:02d}:{m:02d}:{s:06.3f}".replace(".", ",")
 
 
+_ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+         "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+
+
+def _two_digit_words(n: int) -> str:
+    if n < 20:
+        return _ONES[n]
+    tens, ones = divmod(n, 10)
+    return _TENS[tens] + (f"-{_ONES[ones]}" if ones else "")
+
+
+def _year_words(year: int) -> str:
+    """1975 -> 'nineteen seventy-five', 1906 -> 'nineteen oh six',
+    1900 -> 'nineteen hundred' -- how years are actually said aloud,
+    rather than a TTS engine's default 'one thousand nine hundred...'."""
+    if year == 2000:
+        return "two thousand"  # the one exception to the "X hundred" pattern
+    century, remainder = divmod(year, 100)
+    century_word = _two_digit_words(century)
+    if remainder == 0:
+        return f"{century_word} hundred"
+    if remainder < 10:
+        return f"{century_word} oh {_ONES[remainder]}"
+    return f"{century_word} {_two_digit_words(remainder)}"
+
+
+_YEAR_RE = re.compile(r"\b(1[0-9]{3}|20[0-9]{2})\b")
+
+
+def spell_out_years(text: str) -> str:
+    return _YEAR_RE.sub(lambda m: _year_words(int(m.group(0))), text)
+
+
+def align_text_to_timestamps(
+    text: str, whisper_words: list[tuple[float, float, str]]
+) -> list[tuple[float, float, str]]:
+    """Pair OUR known-correct script text with Whisper's audio timestamps,
+    proportionally by position. Whisper is only used for timing here --
+    the displayed words always come from what we actually wrote, so
+    captions can never carry a mis-transcription, regardless of how
+    accurately Whisper heard the audio."""
+    tokens = text.split()
+    n_tokens = len(tokens)
+    n_whisper = len(whisper_words)
+    if n_tokens == 0:
+        return []
+    if n_whisper == 0:
+        return [(0.0, 0.0, tok) for tok in tokens]
+    aligned = []
+    for i, tok in enumerate(tokens):
+        idx = min(int(i * n_whisper / n_tokens), n_whisper - 1)
+        start, end, _ = whisper_words[idx]
+        aligned.append((start, end, tok))
+    return aligned
+
+
 def build_captions_srt(words: list[tuple[float, float, str]], out_path: Path) -> None:
     lines = []
     idx = 1
+    prev_end = 0.0
     for i in range(0, len(words), CAPTION_WORDS_PER_CHUNK):
         chunk = words[i:i + CAPTION_WORDS_PER_CHUNK]
-        start, end = chunk[0][0], chunk[-1][1]
+        # Whisper's per-word timestamps are occasionally imprecise right at
+        # a sentence-boundary pause, which can otherwise produce a chunk
+        # that starts before the previous one ends (two caption cards
+        # briefly overlapping on screen). Clamp to strictly increasing.
+        start = max(chunk[0][0], prev_end)
+        end = max(chunk[-1][1], start + 0.1)
         text = " ".join(w[2] for w in chunk)
         lines.append(f"{idx}\n{srt_timestamp(start)} --> {srt_timestamp(end)}\n{text}\n")
         idx += 1
+        prev_end = end
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -791,15 +856,20 @@ def main() -> int:
         print("Piper voice downloaded")
 
         full_text = " ".join(b["narration"] for b in beats)
-        synthesize_narration(full_text, voice_dir, narration_path)
+        speech_text = spell_out_years(full_text)
+        synthesize_narration(speech_text, voice_dir, narration_path)
         print("Narration synthesized")
 
-        words = transcribe_words(narration_path)
-        duration = words[-1][1] if words else 0.0
-        print(f"Transcribed {len(words)} words, duration={duration:.2f}s")
+        whisper_words = transcribe_words(narration_path)
+        duration = whisper_words[-1][1] if whisper_words else 0.0
+        print(f"Transcribed {len(whisper_words)} words, duration={duration:.2f}s")
 
-        build_captions_srt(words, captions_path)
-        beats = assign_beat_times(beats, words)
+        # Whisper's transcription is used only for timing; the displayed
+        # caption text is our own script (with years already spelled out),
+        # so captions can't carry a mis-transcription.
+        caption_words = align_text_to_timestamps(speech_text, whisper_words)
+        build_captions_srt(caption_words, captions_path)
+        beats = assign_beat_times(beats, whisper_words)
 
         render_frames(beats, duration, frames_dir)
         print(f"Rendered {len(list(frames_dir.glob('*.png')))} animation frames")

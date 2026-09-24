@@ -1,1 +1,4 @@
 requests>=2.31,<3
+piper-tts>=1.2,<2
+faster-whisper>=1.0,<2
+Pillow>=10.0,<11

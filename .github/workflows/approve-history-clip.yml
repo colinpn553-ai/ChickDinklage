@@ -1,0 +1,44 @@
+name: Approve History Clip
+
+# Manual-only: moves one reviewed clip from queue/review_pending/ into
+# queue/pending/, where the "Post Instagram Reel" workflow will pick it
+# up on its own schedule (or via its own manual trigger).
+#
+# This is the human-review gate for history-clip content: nothing from
+# generate-history-clip.yml reaches the posting bot without this step.
+
+on:
+  workflow_dispatch:
+    inputs:
+      filename:
+        description: "Base filename to approve, without extension (e.g. 001_the_rise_of_a_revolution)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Move clip into the posting queue
+        run: |
+          set -e
+          BASE="${{ inputs.filename }}"
+          SRC_MP4="queue/review_pending/${BASE}.mp4"
+          SRC_JSON="queue/review_pending/${BASE}.json"
+          if [ ! -f "$SRC_MP4" ]; then
+            echo "::error::No such file: $SRC_MP4"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git mv "$SRC_MP4" "queue/pending/${BASE}.mp4"
+          if [ -f "$SRC_JSON" ]; then
+            git mv "$SRC_JSON" "queue/pending/${BASE}.json"
+          fi
+          git commit -m "Approve history clip: ${BASE}"
+          git push

@@ -6,9 +6,24 @@ cron schedule; you queue up clips by committing them to the repo, and each
 scheduled run posts the oldest one still waiting.
 
 **Scope note:** this only publishes clips you already have the rights to
-post — your own footage, or clips you have explicit permission to use. It
+post — your own footage, clips you have explicit permission to use, or
+(for the history pipeline below) entirely original AI-written scripts,
+locally-synthesized narration, and hand-coded procedural animation. It
 does not download or scrape video from creators who haven't licensed it
 for reuse.
+
+## Two ways clips get into the queue
+
+1. **Manual**: drop a clip into `queue/pending/` yourself (see "Queueing a
+   clip" below).
+2. **Automated, with mandatory human review**: the `generate-history-clip`
+   workflow writes a short factual history explainer, narrates it, and
+   animates it — see "History clip pipeline" below. Because this one
+   covers real people and real events, it never posts automatically: output
+   lands in `queue/review_pending/`, and nothing moves to `queue/pending/`
+   (where the posting bot looks) until you explicitly approve it.
+
+Either way, the posting side works the same:
 
 ## How it works
 
@@ -77,6 +92,60 @@ scheduled run will fail with an auth error.
 
 Note: this flow calls `graph.instagram.com`, not `graph.facebook.com` —
 that's already reflected in `scripts/post_to_instagram.py`.
+
+## History clip pipeline
+
+One API key, self-service:
+
+1. **Anthropic API key**: https://console.anthropic.com → API Keys →
+   Create Key (paid-as-you-go, separate from any Claude subscription)
+2. Add it as a repo secret (**Settings → Secrets and variables →
+   Actions**): `ANTHROPIC_API_KEY`
+
+The `generate-history-clip` workflow then runs daily at 12:00 UTC (or
+trigger manually from the Actions tab, optionally passing a specific
+`topic` input instead of a random pick from `HISTORY_TOPICS` in
+`scripts/generate_history_clip.py`). For each run it:
+
+1. Asks Claude for a short, neutral, documentary-style script (130-190
+   words) split into beats, each tagged with one scene from a fixed
+   vocabulary (jungle, building, crowd, soldiers, map, meeting, leader,
+   fire, prison, mosque, church, exodus) — see the prompt in
+   `HISTORY_PROMPT` for the full tone/accuracy instructions.
+2. Synthesizes the narration locally with **Piper** (free, offline neural
+   TTS — no account, no per-use cost). The voice model downloads fresh
+   each run from Hugging Face (~63MB); change `PIPER_VOICE_URL_BASE` to
+   use a different Piper voice.
+3. Transcribes that same audio locally with **faster-whisper** to recover
+   word-level timestamps — used for burned-in captions and for timing
+   which scene illustration is on screen, so the visuals track what's
+   actually being said rather than looping one fixed animation.
+4. Renders crude line-drawn scene animations per beat with Pillow
+   (deliberately simple: flat outline shapes, no attempt at real
+   likenesses — see the `draw_*` functions and `SCENES` dict), then
+   `ffmpeg` muxes frames + narration + burned SRT captions + a title card
+   and outro card into the final 1080x1920 Reel.
+5. Writes the result to `queue/review_pending/`, **not**
+   `queue/pending/`.
+
+### Approving a clip
+
+Review the file in `queue/review_pending/` (download it, watch/listen to
+it). If it's good to post, go to the Actions tab → **"Approve History
+Clip"** → Run workflow → enter the base filename (no extension, e.g.
+`001_the_rise_of_a_revolution`). That moves it into `queue/pending/`,
+where the normal posting workflow will pick it up. If it's not good,
+just delete the two files from `queue/review_pending/` instead.
+
+### Why this one isn't automatic
+
+The fictional-content version of this pipeline was removed; this one
+covers real history, including topics involving real atrocities (e.g.
+the Khmer Rouge, the Bosnian genocide). An LLM can get facts wrong or
+strike the wrong tone, and there's no acceptable failure mode where that
+goes out publicly, unreviewed, under a real account. The review step is
+a few seconds of your time per clip in exchange for a human actually
+looking at claims about real events before they're published.
 
 ## Queueing a clip
 

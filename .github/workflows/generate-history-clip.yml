@@ -1,0 +1,50 @@
+name: Generate History Clip
+
+on:
+  schedule:
+    # Runs daily at 12:00 UTC. Output goes to queue/review_pending/, NOT
+    # queue/pending/, so nothing from this workflow is ever auto-posted --
+    # see approve-history-clip.yml.
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Optional: specific topic (leave blank to pick randomly from HISTORY_TOPICS)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: generate-history-clip
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg and fonts
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - run: pip install -r scripts/requirements.txt
+
+      - name: Generate history clip
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HISTORY_TOPIC: ${{ inputs.topic }}
+        run: python scripts/generate_history_clip.py
+
+      - name: Commit new clip
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add queue/review_pending/
+          git diff --cached --quiet || git commit -m "Generate new history clip for review"
+          git push

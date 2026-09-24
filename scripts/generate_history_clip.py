@@ -280,95 +280,165 @@ def draw_backdrop(draw, W, H, sky_top, sky_horizon, ground_color,
     return horizon_y
 
 
-def _tree(draw, x, base_y, t, phase=0.0, height=180, color=LINE):
+def _shade(color, factor=0.72):
+    return tuple(max(0, int(c * factor)) for c in color)
+
+
+def _tint(color, factor=1.18):
+    return tuple(min(255, int(c * factor)) for c in color)
+
+
+TRUNK_COLOR = (92, 62, 40)
+CANOPY_COLORS = [(70, 120, 60), (60, 105, 55), (85, 130, 65)]
+
+SKIN_TONES = [(235, 200, 165), (205, 165, 125), (150, 105, 75), (100, 70, 50), (245, 215, 190)]
+HAIR_COLORS = [(35, 25, 22), (65, 45, 30), (20, 18, 20), (95, 68, 42), (45, 42, 44)]
+SHIRT_COLORS = [(95, 150, 140), (195, 95, 75), (80, 80, 95), (190, 150, 60), (125, 100, 150), (70, 115, 150)]
+PANTS_COLOR = (48, 42, 52)
+SHOE_COLOR = (28, 24, 26)
+PROP_COLOR = (96, 76, 52)
+
+
+def _tree(draw, x, base_y, t, phase=0.0, height=180, canopy=None):
+    canopy = canopy or CANOPY_COLORS[int(phase) % len(CANOPY_COLORS)]
     sway = math.sin(t * 1.5 + phase) * 6
-    top = (x + sway, base_y - height)
-    draw.polygon([top, (x - height * 0.25, base_y), (x + height * 0.25, base_y)], outline=color, width=4)
-    draw.line([top, (x + sway * 0.5, base_y)], fill=color, width=4)
+    top_x = x + sway
+    trunk_w = height * 0.06
+    draw.polygon(
+        [(x - trunk_w, base_y), (x + trunk_w, base_y), (top_x + trunk_w * 0.5, base_y - height * 0.55)],
+        fill=TRUNK_COLOR,
+    )
+    canopy_r = height * 0.4
+    cy = base_y - height * 0.65
+    draw.ellipse([top_x - canopy_r, cy - canopy_r, top_x + canopy_r, cy + canopy_r], fill=canopy)
+    draw.ellipse([top_x - canopy_r * 0.55, cy - canopy_r * 0.6, top_x + canopy_r * 1.05, cy + canopy_r * 0.5],
+                 fill=_shade(canopy, 0.8))
 
 
-def _stick_figure(draw, x, foot_y, t, phase=0.0, scale=1.0, arms_up=False, color=LINE,
-                   hat=None, robe=False, prop=None):
+def _stick_figure(draw, x, foot_y, t, phase=0.0, scale=1.0, arms_up=False,
+                   seed=0, hat=None, robe=False, prop=None):
     """x, foot_y = ground position (feet). Figure is built upward from there.
 
-    hat: None, "cap" (rounded brim), or "helmet" (flat brim line)
-    robe: draw a tapered robe/dress silhouette instead of straight legs
+    seed: picks a consistent skin/hair/shirt color combo for this figure
+          (vary it per figure in a scene for visual diversity).
+    hat: None, "cap", or "helmet"
+    robe: draw a tapered, filled robe/dress silhouette instead of separate
+          legs/pants
     prop: None, "bag", "staff", "banner", "book", or "rifle" -- something
           simple held in/near the swinging hand, kept generic rather than
           any specific real-world costume, since the same scene types get
           reused across many unrelated topics.
     """
+    skin = SKIN_TONES[seed % len(SKIN_TONES)]
+    hair = HAIR_COLORS[(seed * 7 + 3) % len(HAIR_COLORS)]
+    shirt = SHIRT_COLORS[(seed * 5 + 1) % len(SHIRT_COLORS)]
+
     total_h = 169 * scale
-    y = foot_y - total_h  # head-top, matching the original layout math
-    r = 22 * scale
-    draw.ellipse([x - r, y, x + r, y + 2 * r], outline=color, width=3)
+    y = foot_y - total_h  # head-top
+    r = 24 * scale
+    body_top = y + 2 * r - 4 * scale
+    body_bot = body_top + 74 * scale
 
-    if hat == "cap":
-        draw.arc([x - r - 4, y - 16 * scale, x + r + 4, y + 8 * scale], 180, 360, fill=color, width=3)
-    elif hat == "helmet":
-        draw.line([(x - r - 4, y + 3), (x + r + 4, y + 3)], fill=color, width=3)
-        draw.arc([x - r - 2, y - 6 * scale, x + r + 2, y + 10 * scale], 180, 360, fill=color, width=3)
-
-    body_top = y + 2 * r
-    body_bot = body_top + 70 * scale
-
+    sway = math.sin(t * 2 + phase) * 8 * scale
     if arms_up:
-        draw.line([(x, body_top + 15 * scale), (x - 30 * scale, body_top - 15 * scale)], fill=color, width=3)
-        draw.line([(x, body_top + 15 * scale), (x + 30 * scale, body_top - 15 * scale)], fill=color, width=3)
-        hand = (x + 30 * scale, body_top - 15 * scale)
+        l_hand = (x - 30 * scale, body_top - 15 * scale)
+        r_hand = (x + 30 * scale, body_top - 15 * scale)
     else:
-        sway = math.sin(t * 2 + phase) * 8 * scale
-        draw.line([(x, body_top + 15 * scale), (x - 25 * scale + sway, body_top + 40 * scale)], fill=color, width=3)
-        draw.line([(x, body_top + 15 * scale), (x + 25 * scale - sway, body_top + 40 * scale)], fill=color, width=3)
-        hand = (x + 25 * scale - sway, body_top + 40 * scale)
+        l_hand = (x - 25 * scale + sway, body_top + 42 * scale)
+        r_hand = (x + 25 * scale - sway, body_top + 42 * scale)
+    arm_w = max(int(9 * scale), 3)
+    draw.line([(x - 10 * scale, body_top + 6 * scale), l_hand], fill=skin, width=arm_w)
+    draw.line([(x + 10 * scale, body_top + 6 * scale), r_hand], fill=skin, width=arm_w)
 
     if robe:
-        hem = 34 * scale
-        draw.line([(x, body_top), (x, body_bot)], fill=color, width=3)
+        hem = 36 * scale
         draw.polygon(
-            [(x - 9 * scale, body_bot), (x + 9 * scale, body_bot), (x + hem, body_bot + 60 * scale), (x - hem, body_bot + 60 * scale)],
-            outline=color, width=3,
+            [(x - 16 * scale, body_bot), (x + 16 * scale, body_bot),
+             (x + hem, body_bot + 62 * scale), (x - hem, body_bot + 62 * scale)],
+            fill=shirt,
         )
-        draw.line([(x - 10 * scale, body_bot + 60 * scale), (x - 10 * scale, body_bot + 85 * scale)], fill=color, width=3)
-        draw.line([(x + 10 * scale, body_bot + 60 * scale), (x + 10 * scale, body_bot + 85 * scale)], fill=color, width=3)
+        draw.polygon(
+            [(x, body_bot), (x + 16 * scale, body_bot),
+             (x + hem, body_bot + 62 * scale), (x + hem * 0.15, body_bot + 62 * scale)],
+            fill=_shade(shirt),
+        )
+        foot_by = body_bot + 62 * scale
+        draw.ellipse([x - 16 * scale, foot_by - 4 * scale, x, foot_by + 8 * scale], fill=SHOE_COLOR)
+        draw.ellipse([x, foot_by - 4 * scale, x + 16 * scale, foot_by + 8 * scale], fill=SHOE_COLOR)
     else:
-        draw.line([(x, body_top), (x, body_bot)], fill=color, width=3)
         step = math.sin(t * 3 + phase) * 15 * scale
-        draw.line([(x, body_bot), (x - 20 * scale + step, body_bot + 55 * scale)], fill=color, width=3)
-        draw.line([(x, body_bot), (x + 20 * scale - step, body_bot + 55 * scale)], fill=color, width=3)
+        l_foot = (x - 20 * scale + step, body_bot + 55 * scale)
+        r_foot = (x + 20 * scale - step, body_bot + 55 * scale)
+        leg_w = max(int(11 * scale), 4)
+        draw.line([(x - 8 * scale, body_bot), l_foot], fill=PANTS_COLOR, width=leg_w)
+        draw.line([(x + 8 * scale, body_bot), r_foot], fill=PANTS_COLOR, width=leg_w)
+        for fx, fy in (l_foot, r_foot):
+            draw.ellipse([fx - 9 * scale, fy - 4 * scale, fx + 9 * scale, fy + 7 * scale], fill=SHOE_COLOR)
 
+    draw.rounded_rectangle([x - 22 * scale, body_top, x + 22 * scale, body_bot], radius=10 * scale, fill=shirt)
+    draw.rectangle([x + 6 * scale, body_top + 4 * scale, x + 22 * scale, body_bot], fill=_shade(shirt))
+
+    draw.ellipse([x - r, y, x + r, y + 2 * r], fill=skin)
+    draw.ellipse([x + r * 0.15, y, x + r, y + 2 * r], fill=_shade(skin, 0.88))
+
+    if hat == "cap":
+        draw.pieslice([x - r - 4 * scale, y - 15 * scale, x + r + 4 * scale, y + 9 * scale], 180, 360, fill=hair)
+    elif hat == "helmet":
+        draw.pieslice([x - r - 3 * scale, y - 7 * scale, x + r + 3 * scale, y + 11 * scale], 180, 360,
+                       fill=(120, 125, 112))
+        draw.rectangle([x - r - 5 * scale, y + 3 * scale, x + r + 5 * scale, y + 8 * scale], fill=(95, 100, 88))
+    else:
+        draw.pieslice([x - r - 2 * scale, y - 9 * scale, x + r + 2 * scale, y + r * 0.75], 180, 360, fill=hair)
+        for sx in (-0.45, 0.0, 0.45):
+            spike_x = x + sx * r
+            draw.polygon(
+                [(spike_x - 7 * scale, y + 2 * scale), (spike_x, y - 15 * scale), (spike_x + 7 * scale, y + 2 * scale)],
+                fill=hair,
+            )
+
+    if scale >= 0.7:
+        ey = y + r * 1.15
+        draw.ellipse([x - 9 * scale, ey - 4 * scale, x - 1 * scale, ey + 4 * scale], fill=(35, 28, 28))
+        draw.ellipse([x + 1 * scale, ey - 4 * scale, x + 9 * scale, ey + 4 * scale], fill=(35, 28, 28))
+
+    hand = r_hand
     if prop == "bag":
-        bx, by = x - 32 * scale, body_top + 38 * scale
-        draw.line([(x - 12 * scale, body_top + 4 * scale), (bx, by - 10 * scale)], fill=color, width=2)
-        draw.ellipse([bx - 15 * scale, by - 10 * scale, bx + 15 * scale, by + 12 * scale], outline=color, width=2)
+        bx, by = l_hand[0] - 4 * scale, l_hand[1] + 6 * scale
+        draw.line([(x - 12 * scale, body_top + 8 * scale), (bx, by - 8 * scale)], fill=PROP_COLOR, width=3)
+        draw.ellipse([bx - 15 * scale, by - 10 * scale, bx + 15 * scale, by + 12 * scale], fill=PROP_COLOR)
     elif prop == "staff":
-        draw.line([hand, (hand[0] + 4 * scale, foot_y)], fill=color, width=3)
+        draw.line([hand, (hand[0] + 4 * scale, foot_y)], fill=PROP_COLOR, width=4)
     elif prop == "banner":
         top = (hand[0], hand[1] - 70 * scale)
-        draw.line([hand, top], fill=color, width=3)
-        draw.rectangle([top[0], top[1], top[0] + 32 * scale, top[1] + 24 * scale], outline=color, width=2)
+        draw.line([hand, top], fill=PROP_COLOR, width=3)
+        draw.rectangle([top[0], top[1], top[0] + 32 * scale, top[1] + 24 * scale], fill=SHIRT_COLORS[(seed + 2) % len(SHIRT_COLORS)])
     elif prop == "book":
-        draw.rectangle([x - 15 * scale, body_top + 22 * scale, x + 15 * scale, body_top + 36 * scale], outline=color, width=2)
+        draw.rectangle([x - 15 * scale, body_top + 22 * scale, x + 15 * scale, body_top + 36 * scale], fill=(160, 70, 60))
     elif prop == "rifle":
-        draw.line([(x, body_top + 20 * scale), (x + 50 * scale, body_top + 5 * scale)], fill=color, width=4)
+        draw.line([(x, body_top + 20 * scale), (x + 50 * scale, body_top + 5 * scale)], fill=(50, 45, 40), width=5)
 
 
-def _building(draw, cx, base_y, t, width=240, height=330, color=LINE, flag=False):
+def _building(draw, cx, base_y, t, width=240, height=330, color=(150, 140, 130), flag=False):
     bx0, bx1 = cx - width / 2, cx + width / 2
     by0, by1 = base_y - height, base_y
-    draw.rectangle([bx0, by0, bx1, by1], outline=color, width=5)
+    draw.rectangle([bx0, by0, bx1, by1], fill=color)
+    draw.rectangle([cx, by0, bx1, by1], fill=_shade(color))
+
     n_cols = max(int(width / 60), 2)
+    win_color = _tint(color, 1.3) if sum(color) < 550 else (255, 235, 170)
     for col in range(n_cols):
         cxi = bx0 + width * (col + 0.5) / n_cols
-        draw.line([(cxi, by0 + 20), (cxi, by1)], fill=color, width=3)
-    for row_y in [by0 + height * 0.35, by0 + height * 0.65]:
-        draw.line([(bx0, row_y), (bx1, row_y)], fill=color, width=2)
-    draw.polygon([(bx0 - 20, by0), (bx1 + 20, by0), (cx, by0 - width * 0.3)], outline=color, width=5)
+        for row_y in [by0 + height * 0.28, by0 + height * 0.58]:
+            ww = width / n_cols * 0.4
+            draw.rectangle([cxi - ww / 2, row_y, cxi + ww / 2, row_y + height * 0.16], fill=win_color)
+    draw.rectangle([cx - width * 0.06, by1 - height * 0.22, cx + width * 0.06, by1], fill=_shade(color, 0.6))
+
+    draw.polygon([(bx0 - 20, by0), (bx1 + 20, by0), (cx, by0 - width * 0.3)], fill=_shade(color, 0.55))
     if flag:
         flag_sway = math.sin(t * 3) * 8
-        draw.line([(cx, by0 - width * 0.3), (cx, by0 - width * 0.3 - 80)], fill=color, width=3)
-        top = by0 - width * 0.3 - 80
-        draw.polygon([(cx, top), (cx + 50 + flag_sway, top + 15), (cx, top + 30)], outline=color, width=3)
+        pole_top = by0 - width * 0.3 - 80
+        draw.line([(cx, by0 - width * 0.3), (cx, pole_top)], fill=(210, 200, 190), width=3)
+        draw.polygon([(cx, pole_top), (cx + 50 + flag_sway, pole_top + 15), (cx, pole_top + 30)], fill=(190, 70, 60))
 
 
 # --- Scene palettes (sky top, sky horizon, ground, hills or None) --------
@@ -380,8 +450,8 @@ def draw_jungle(draw, t, W, H):
         _tree(draw, W * xf, horizon + 60, t, phase=i, height=150 + 20 * (i % 2))
     for i, xf in enumerate([0.42, 0.5, 0.58]):
         _tree(draw, W * xf, horizon + 130, t, phase=i + 2, height=110)
-    _stick_figure(draw, W * 0.42, horizon + 150, t, phase=0, robe=True, prop="staff")
-    _stick_figure(draw, W * 0.56, horizon + 150, t, phase=1.2, hat="cap", prop="bag")
+    _stick_figure(draw, W * 0.42, horizon + 150, t, phase=0, seed=0, robe=True, prop="staff")
+    _stick_figure(draw, W * 0.56, horizon + 150, t, phase=1.2, seed=3, hat="cap", prop="bag")
 
 
 def draw_building(draw, t, W, H):
@@ -392,7 +462,7 @@ def draw_building(draw, t, W, H):
     hats = ["cap", None, "cap", None]
     props = [None, "bag", "book", None]
     for i, xf in enumerate([0.15, 0.35, 0.65, 0.85]):
-        _stick_figure(draw, W * xf, horizon + 60, t, phase=i, scale=0.55, hat=hats[i], prop=props[i])
+        _stick_figure(draw, W * xf, horizon + 60, t, phase=i, seed=i, scale=0.55, hat=hats[i], prop=props[i])
 
 
 def draw_crowd(draw, t, W, H):
@@ -406,7 +476,7 @@ def draw_crowd(draw, t, W, H):
             arms_up = (i + row_i) % 2 == 0
             prop = None if arms_up else props[i]
             _stick_figure(draw, W * xf + (20 if row_i else 0), row_y, t, phase=i * 0.6 + row_i,
-                          scale=scale, arms_up=arms_up, prop=prop)
+                          seed=i + row_i * 3, scale=scale, arms_up=arms_up, prop=prop)
 
 
 def draw_soldiers(draw, t, W, H):
@@ -432,10 +502,10 @@ def draw_map(draw, t, W, H):
         ang = i / 10 * 2 * math.pi
         rad = 190 + 22 * math.sin(ang * 3 + t * 0.5)
         pts.append((cx + rad * math.cos(ang), cy + rad * 0.75 * math.sin(ang)))
-    draw.polygon(pts, outline=LINE, width=4)
+    draw.polygon(pts, fill=(195, 160, 95), outline=LINE, width=4)
     dash_phase = int(t * 4) % 2
-    draw.line([(cx, cy - 160), (cx, cy + 160)], fill=LINE, width=(4 if dash_phase else 2))
-    draw.ellipse([cx - 9, cy - 9, cx + 9, cy + 9], fill=LINE)
+    draw.line([(cx, cy - 160), (cx, cy + 160)], fill=(150, 60, 55), width=(4 if dash_phase else 2))
+    draw.ellipse([cx - 9, cy - 9, cx + 9, cy + 9], fill=(150, 60, 55))
     # small compass rose, bottom-right, for map flavor
     rcx, rcy, rr = W - mx - 70, H - my - 70, 40
     draw.ellipse([rcx - rr, rcy - rr, rcx + rr, rcy + rr], outline=LINE, width=2)
@@ -457,81 +527,103 @@ def draw_meeting(draw, t, W, H):
     draw.line([(tx1 - 10, ty), (tx1 - 10, ty + 70)], fill=LINE, width=4)
     props = [None, "book", "book", None]
     for i, xf in enumerate([0.3, 0.42, 0.58, 0.7]):
-        _stick_figure(draw, W * xf, ty, t, phase=i * 0.9, scale=0.55, prop=props[i])
+        _stick_figure(draw, W * xf, ty, t, phase=i * 0.9, seed=i, scale=0.55, prop=props[i])
 
 
 def draw_leader(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (90, 60, 70), (200, 110, 70), (55, 40, 40), sun=True,
                              sun_color=(230, 120, 90))
     for i, xf in enumerate([0.15, 0.3, 0.68, 0.85]):
-        _stick_figure(draw, W * xf, horizon + 140, t, phase=i * 1.3, scale=0.5, arms_up=(i % 2 == 0))
+        _stick_figure(draw, W * xf, horizon + 140, t, phase=i * 1.3, seed=i + 1, scale=0.5, arms_up=(i % 2 == 0))
     cx = W / 2
     bob = math.sin(t * 1.5) * 4
     ped_y = horizon + 150
-    draw.rectangle([cx - 90, ped_y - 40, cx + 90, ped_y], outline=LINE, width=4)
+    draw.rectangle([cx - 90, ped_y - 40, cx + 90, ped_y], fill=(120, 110, 100))
+    draw.rectangle([cx, ped_y - 40, cx + 90, ped_y], fill=_shade((120, 110, 100)))
     foot_y = ped_y - 40
     r = 55
     head_cy = foot_y - 210 + bob
-    draw.ellipse([cx - r, head_cy - r, cx + r, head_cy + r], outline=LINE, width=5)
-    draw.rectangle([cx - 85, head_cy + r, cx + 85, foot_y], outline=LINE, width=5)
-    # simple sash, suggesting ceremonial dress without any specific likeness
-    draw.line([(cx - 70, head_cy + r + 10), (cx + 40, foot_y - 15)], fill=LINE, width=4)
+    skin = SKIN_TONES[2]
+    robe_color = (120, 45, 55)
+    draw.rectangle([cx - 85, head_cy + r, cx + 85, foot_y], fill=robe_color)
+    draw.rectangle([cx, head_cy + r, cx + 85, foot_y], fill=_shade(robe_color))
+    draw.ellipse([cx - r, head_cy - r, cx + r, head_cy + r], fill=skin)
+    draw.ellipse([cx + r * 0.15, head_cy - r, cx + r, head_cy + r], fill=_shade(skin, 0.88))
+    draw.pieslice([cx - r - 3, head_cy - r - 6, cx + r + 3, head_cy + r * 0.7], 180, 360, fill=HAIR_COLORS[2])
+    # simple gold sash, suggesting ceremonial dress without any specific likeness
+    draw.line([(cx - 70, head_cy + r + 10), (cx + 40, foot_y - 15)], fill=(210, 175, 90), width=6)
 
 
 def draw_fire(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (60, 30, 30), (120, 50, 35), (40, 30, 28))
     bx0, by0, bx1 = W * 0.3, horizon - 10, W * 0.7
     by1 = horizon + 140
-    draw.rectangle([bx0, by0, bx1, by1], outline=LINE, width=4)
-    draw.line([(bx0, by0), (bx0 + 30, by0 - 40)], fill=LINE, width=3)
-    draw.line([(bx1, by0), (bx1 - 40, by0 - 30)], fill=LINE, width=3)
+    draw.rectangle([bx0, by0, bx1, by1], fill=(70, 55, 50))
+    draw.rectangle([(bx0 + bx1) / 2, by0, bx1, by1], fill=_shade((70, 55, 50)))
+    draw.line([(bx0, by0), (bx0 + 30, by0 - 40)], fill=(50, 40, 38), width=4)
+    draw.line([(bx1, by0), (bx1 - 40, by0 - 30)], fill=(50, 40, 38), width=4)
     for i in range(3):
         fx = bx0 + (bx1 - bx0) * (i + 0.5) / 3
         flick = math.sin(t * 8 + i) * 10
         draw.polygon(
             [(fx, by0), (fx - 20, by0 - 60 + flick), (fx, by0 - 100 + flick), (fx + 20, by0 - 60 + flick)],
-            outline=(255, 190, 120), width=3,
+            fill=(235, 140, 60),
+        )
+        draw.polygon(
+            [(fx, by0), (fx - 10, by0 - 45 + flick), (fx, by0 - 75 + flick), (fx + 10, by0 - 45 + flick)],
+            fill=(255, 210, 110),
         )
         smoke_y = by0 - 100 - ((t * 30 + i * 40) % 200)
         smoke_x = fx + math.sin(t * 1.2 + i) * 15
-        draw.ellipse([smoke_x - 12, smoke_y - 12, smoke_x + 12, smoke_y + 12], outline=(150, 150, 150), width=2)
-    _stick_figure(draw, W * 0.18, horizon + 130, t, phase=0, scale=0.6)
+        smoke_alpha_gray = 120 + int(40 * (1 - ((t * 30 + i * 40) % 200) / 200))
+        draw.ellipse([smoke_x - 12, smoke_y - 12, smoke_x + 12, smoke_y + 12],
+                     outline=(smoke_alpha_gray,) * 3, width=2)
+    _stick_figure(draw, W * 0.18, horizon + 130, t, phase=0, seed=1, scale=0.6)
 
 
 def draw_prison(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (90, 95, 100), (150, 150, 145), (70, 68, 65))
     bx0, by0, bx1, by1 = W * 0.28, horizon - 60, W * 0.72, horizon + 150
-    draw.rectangle([bx0, by0, bx1, by1], outline=LINE, width=4)
+    draw.rectangle([bx0, by0, bx1, by1], fill=(110, 108, 100))
+    draw.rectangle([(bx0 + bx1) / 2, by0, bx1, by1], fill=_shade((110, 108, 100)))
     for i in range(7):
         bx = bx0 + (bx1 - bx0) * i / 6
-        draw.line([(bx, by0 - 15), (bx, by1 + 15)], fill=LINE, width=4)
-    draw.rectangle([bx0 - 60, by0 + 20, bx0 - 20, by1], outline=LINE, width=3)  # watchtower
+        draw.line([(bx, by0 - 15), (bx, by1 + 15)], fill=(35, 32, 30), width=4)
+    draw.rectangle([bx0 - 60, by0 + 20, bx0 - 20, by1], fill=(90, 88, 82))  # watchtower
     _stick_figure(draw, (bx0 + bx1) / 2, by1 - 10, t, scale=0.6)
 
 
 def draw_mosque(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (110, 165, 215), (250, 210, 150), (190, 165, 110), sun=True)
     cx, base_y = W / 2, horizon + 150
-    draw.rectangle([cx - 100, base_y - 150, cx + 100, base_y], outline=LINE, width=4)
-    draw.arc([cx - 100, base_y - 250, cx + 100, base_y - 130], 180, 360, fill=LINE, width=4)
-    draw.line([(cx, base_y - 250), (cx, base_y - 290)], fill=LINE, width=3)
-    draw.arc([cx - 12, base_y - 305, cx + 12, base_y - 281], 200, 520, fill=LINE, width=3)
+    wall = (225, 205, 165)
+    draw.rectangle([cx - 100, base_y - 150, cx + 100, base_y], fill=wall)
+    draw.rectangle([cx, base_y - 150, cx + 100, base_y], fill=_shade(wall))
+    draw.pieslice([cx - 100, base_y - 250, cx + 100, base_y - 130], 180, 360, fill=(190, 150, 80))
+    draw.line([(cx, base_y - 250), (cx, base_y - 290)], fill=(140, 110, 60), width=3)
+    draw.pieslice([cx - 12, base_y - 305, cx + 12, base_y - 281], 200, 520, fill=(190, 150, 80))
     for mx in [cx - 150, cx + 150]:
-        draw.line([(mx, base_y), (mx, base_y - 220)], fill=LINE, width=4)
-        draw.ellipse([mx - 15, base_y - 245, mx + 15, base_y - 215], outline=LINE, width=3)
+        draw.rectangle([mx - 10, base_y - 220, mx + 10, base_y], fill=wall)
+        draw.ellipse([mx - 15, base_y - 245, mx + 15, base_y - 215], fill=(190, 150, 80))
+    for wy in [base_y - 110, base_y - 60]:
+        draw.rectangle([cx - 20, wy, cx + 20, wy + 35], fill=(150, 115, 70))
     _tree(draw, cx - 220, base_y + 20, t, height=90, phase=0.5)
 
 
 def draw_church(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (130, 170, 210), (210, 210, 200), (70, 95, 60), hills_color=(45, 70, 40))
     cx, base_y = W / 2, horizon + 150
-    draw.rectangle([cx - 90, base_y - 150, cx + 90, base_y], outline=LINE, width=4)
-    draw.polygon([(cx - 20, base_y - 270), (cx + 20, base_y - 270), (cx, base_y - 340)], outline=LINE, width=4)
-    draw.line([(cx, base_y - 340), (cx, base_y - 380)], fill=LINE, width=3)
-    draw.line([(cx - 15, base_y - 365), (cx + 15, base_y - 365)], fill=LINE, width=3)
+    wall = (200, 190, 175)
+    draw.rectangle([cx - 90, base_y - 150, cx + 90, base_y], fill=wall)
+    draw.rectangle([cx, base_y - 150, cx + 90, base_y], fill=_shade(wall))
+    draw.polygon([(cx - 20, base_y - 270), (cx + 20, base_y - 270), (cx, base_y - 340)], fill=(110, 60, 55))
+    draw.line([(cx, base_y - 340), (cx, base_y - 380)], fill=(70, 60, 55), width=3)
+    draw.line([(cx - 15, base_y - 365), (cx + 15, base_y - 365)], fill=(70, 60, 55), width=3)
+    for wy in [base_y - 110, base_y - 60]:
+        draw.rectangle([cx - 18, wy, cx + 18, wy + 32], fill=(120, 150, 190))
     for i in range(4):
         fx = cx - 200 + i * 40
-        draw.line([(fx, base_y), (fx, base_y - 30)], fill=LINE, width=2)  # simple fence
+        draw.line([(fx, base_y), (fx, base_y - 30)], fill=(90, 90, 85), width=3)  # simple fence
 
 
 def draw_exodus(draw, t, W, H):
@@ -541,7 +633,7 @@ def draw_exodus(draw, t, W, H):
     y = horizon + 140
     for i in range(6):
         x = ((t * 55 + i * 90) % (W + 150)) - 75
-        _stick_figure(draw, x, y, t, phase=i * 0.5, scale=0.65, robe=(i % 2 == 0), prop="bag")
+        _stick_figure(draw, x, y, t, phase=i * 0.5, seed=i + 2, scale=0.65, robe=(i % 2 == 0), prop="bag")
 
 
 SCENES = {

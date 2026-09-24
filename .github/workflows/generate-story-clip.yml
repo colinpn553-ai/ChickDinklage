@@ -24,15 +24,14 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install ffmpeg and fonts
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
 
       - run: pip install -r scripts/requirements.txt
 
       - name: Generate story clip
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: python scripts/generate_story_clip.py
 
       - name: Commit new clip

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import subprocess
 import sys
 import tempfile
@@ -26,20 +25,13 @@ POSTED_DIR = REPO_ROOT / "queue" / "posted"
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_API_VERSION = "2023-06-01"
 
-PEXELS_SEARCH_URL = "https://api.pexels.com/videos/search"
-
-HORROR_FOOTAGE_KEYWORDS = [
-    "dark forest fog",
-    "abandoned house night",
-    "empty hallway dark",
-    "old cemetery fog",
-    "creepy basement",
-    "foggy woods night",
-    "abandoned asylum",
-    "dark attic",
-    "old mirror dark room",
-    "flickering light hallway",
-]
+VIDEO_WIDTH = 1080
+VIDEO_HEIGHT = 1920
+FONT_PATH = os.environ.get(
+    "DRAWTEXT_FONT", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+)
+OUTRO_TEXT = "FOLLOW FOR MORE"
+OUTRO_DURATION_SECONDS = 3.0
 
 STORY_PROMPT = """Write an original short horror story for a narrated Instagram Reel.
 
@@ -92,27 +84,6 @@ def synthesize_narration(story_text: str, out_path: Path) -> None:
     gTTS(text=story_text, lang="en", slow=False).save(str(out_path))
 
 
-def fetch_stock_footage(out_path: Path) -> None:
-    api_key = env("PEXELS_API_KEY")
-    query = random.choice(HORROR_FOOTAGE_KEYWORDS)
-    resp = requests.get(
-        PEXELS_SEARCH_URL,
-        headers={"Authorization": api_key},
-        params={"query": query, "orientation": "portrait", "per_page": 15},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    videos = resp.json().get("videos", [])
-    if not videos:
-        raise RuntimeError(f"No Pexels results for query: {query!r}")
-    video = random.choice(videos)
-    files = sorted(video["video_files"], key=lambda f: f.get("height", 0), reverse=True)
-    video_url = files[0]["link"]
-    video_resp = requests.get(video_url, timeout=120)
-    video_resp.raise_for_status()
-    out_path.write_bytes(video_resp.content)
-
-
 def get_audio_duration(path: Path) -> float:
     result = subprocess.run(
         [
@@ -128,15 +99,57 @@ def get_audio_duration(path: Path) -> float:
     return float(result.stdout.strip())
 
 
-def assemble_clip(footage_path: Path, narration_path: Path, out_path: Path) -> None:
+def title_fontsize(title: str) -> int:
+    length = len(title)
+    if length <= 16:
+        return 84
+    if length <= 24:
+        return 68
+    if length <= 32:
+        return 56
+    return 44
+
+
+def assemble_clip(title: str, narration_path: Path, out_path: Path, work_dir: Path) -> None:
+    """Render an animated procedural background (two color layers slowly
+    cross-fading, with grain and a vignette), overlay a fading title card at
+    the start and a "follow for more" card at the end, and mux in the
+    narration audio. Everything here is generated, not sourced from any
+    external footage."""
     duration = get_audio_duration(narration_path)
+    outro_start = max(duration - OUTRO_DURATION_SECONDS, 0.0)
+
+    # drawtext's inline `text=` option collides with the filter graph's own
+    # colon syntax, so the (LLM-generated, unpredictable) title is written
+    # to a file and read via `textfile=` instead of escaped inline.
+    title_file = work_dir / "title.txt"
+    title_file.write_text(title, encoding="utf-8")
+
+    filter_complex = (
+        f"[0:v][1:v]blend=all_expr='A*(0.5+0.5*sin(2*PI*T/8))+"
+        f"B*(0.5-0.5*sin(2*PI*T/8))'[bg];"
+        f"[bg]noise=alls=20:allf=t+u,eq=contrast=1.15:brightness=-0.02,"
+        f"vignette=PI/4,format=yuv420p[bg2];"
+        f"[bg2]drawtext=fontfile={FONT_PATH}:textfile={title_file.as_posix()}:"
+        f"fontsize={title_fontsize(title)}:fontcolor=white:borderw=3:"
+        f"bordercolor=black:box=1:boxcolor=black@0.35:boxborderw=20:"
+        f"x=(w-text_w)/2:y=(h-text_h)/2:"
+        f"alpha='if(lt(t\\,1)\\,t\\,if(lt(t\\,3)\\,1\\,if(lt(t\\,4)\\,4-t\\,0)))'[v1];"
+        f"[v1]drawtext=fontfile={FONT_PATH}:text='{OUTRO_TEXT}':fontsize=40:"
+        f"fontcolor=white:borderw=3:bordercolor=black:box=1:"
+        f"boxcolor=black@0.35:boxborderw=16:x=(w-text_w)/2:y=h-200:"
+        f"alpha='if(lt(t\\,{outro_start})\\,0\\,"
+        f"if(lt(t\\,{outro_start + 1})\\,t-{outro_start}\\,1))'[v2]"
+    )
+
     subprocess.run(
         [
             "ffmpeg", "-y",
-            "-stream_loop", "-1", "-i", str(footage_path),
+            "-f", "lavfi", "-i", f"color=c=0x1a0010:s={VIDEO_WIDTH}x{VIDEO_HEIGHT}:d={duration}:r=30",
+            "-f", "lavfi", "-i", f"color=c=0x02030a:s={VIDEO_WIDTH}x{VIDEO_HEIGHT}:d={duration}:r=30",
             "-i", str(narration_path),
-            "-map", "0:v:0", "-map", "1:a:0",
-            "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
+            "-filter_complex", filter_complex,
+            "-map", "[v2]", "-map", "2:a",
             "-c:v", "libx264", "-c:a", "aac",
             "-t", str(duration),
             str(out_path),
@@ -166,17 +179,13 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         narration_path = tmp_path / "narration.mp3"
-        footage_path = tmp_path / "footage.mp4"
 
         synthesize_narration(story, narration_path)
         print("Narration synthesized")
 
-        fetch_stock_footage(footage_path)
-        print("Stock footage downloaded")
-
         base_name = f"{next_index():03d}_{slugify(title)}"
         out_video = PENDING_DIR / f"{base_name}.mp4"
-        assemble_clip(footage_path, narration_path, out_video)
+        assemble_clip(title, narration_path, out_video, tmp_path)
         print(f"Assembled {out_video.name}")
 
     caption = (

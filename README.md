@@ -6,31 +6,14 @@ cron schedule; you queue up clips by committing them to the repo, and each
 scheduled run posts the oldest one still waiting.
 
 **Scope note:** this only publishes clips you already have the rights to
-post — your own footage, clips you have explicit permission to use, or
-(for the automated story pipeline below) entirely original AI-generated
-text, narration, and procedurally-generated visuals. It does not download
-or scrape video from creators who haven't licensed it for reuse.
-
-## Two ways clips get into the queue
-
-1. **Manual**: drop a clip into `queue/pending/` yourself (see "Queueing a
-   clip" below).
-2. **Automated**: the `generate-story-clip` workflow
-   (`.github/workflows/generate-story-clip.yml`) runs on its own daily
-   schedule, generates an original short horror story via the Anthropic
-   API, narrates it with free text-to-speech, composites it over a
-   procedurally-animated dark background (no stock footage — generated
-   entirely with `ffmpeg` color/noise/blend filters) with a fading title
-   card at the open and a "follow for more" card at the close, and drops
-   the assembled Reel into `queue/pending/` automatically — see "Automated
-   story pipeline setup" below.
-
-Either way, the posting side works the same:
+post — your own footage, or clips you have explicit permission to use. It
+does not download or scrape video from creators who haven't licensed it
+for reuse.
 
 ## How it works
 
-1. A clip lands in `queue/pending/` (manually or via the generator above),
-   along with an optional `.json` caption file.
+1. Drop a clip into `queue/pending/` (see "Queueing a clip" below), along
+   with an optional `.json` caption file.
 2. On its schedule, the `post-reel` workflow checks out the repo, runs
    `scripts/post_to_instagram.py`, which:
    - picks the oldest file in `queue/pending/`
@@ -95,45 +78,7 @@ scheduled run will fail with an auth error.
 Note: this flow calls `graph.instagram.com`, not `graph.facebook.com` —
 that's already reflected in `scripts/post_to_instagram.py`.
 
-## Automated story pipeline setup
-
-One more API key, self-service (you create it yourself, logged in as you):
-
-1. **Anthropic API key** (for story generation):
-   - Go to https://console.anthropic.com → API Keys → Create Key
-   - This is a paid-as-you-go API (very cheap per story; a few hundred
-     tokens each), separate from any Claude subscription
-2. Add it to this repo's secrets (**Settings → Secrets and variables →
-   Actions**):
-   - `ANTHROPIC_API_KEY`
-
-Once that's set, the `generate-story-clip` workflow runs daily at 12:00
-UTC (edit the cron in `.github/workflows/generate-story-clip.yml` to
-change cadence), or trigger it manually from the Actions tab the same way
-as the posting workflow.
-
-Notes on this pipeline:
-- Narration uses `gTTS`, a free library built on Google Translate's
-  text-to-speech endpoint. It's unofficial (not a documented public API),
-  so it's usually reliable but can occasionally fail or get rate-limited —
-  if a run fails here, retrying usually works.
-- The story prompt explicitly instructs the model to avoid real people,
-  real tragedies, and copyrighted characters/franchises, to keep generated
-  stories original and avoid depicting real events.
-- The visual background is entirely procedural — two dark color layers
-  slowly cross-fading, with film-grain noise and a vignette, all generated
-  by `ffmpeg` filters (`blend`, `noise`, `eq`, `vignette`). No stock
-  footage or external video assets are used.
-- The story title fades in as a text card for the first ~4 seconds, and a
-  "FOLLOW FOR MORE" card fades in for the last ~3 seconds, both drawn with
-  `ffmpeg`'s `drawtext` filter using the font at `DRAWTEXT_FONT` (defaults
-  to DejaVu Sans Bold, installed via the workflow's `apt-get` step).
-- Output video is 1080x1920 (vertical, matching Reels).
-- Filenames are auto-numbered based on how many clips already exist in
-  `queue/pending/` + `queue/posted/`, so they interleave safely with any
-  clips you queue manually.
-
-## Queueing a clip manually
+## Queueing a clip
 
 ```
 queue/pending/001_my_clip.mp4

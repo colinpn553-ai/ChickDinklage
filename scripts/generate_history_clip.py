@@ -287,25 +287,70 @@ def _tree(draw, x, base_y, t, phase=0.0, height=180, color=LINE):
     draw.line([top, (x + sway * 0.5, base_y)], fill=color, width=4)
 
 
-def _stick_figure(draw, x, foot_y, t, phase=0.0, scale=1.0, arms_up=False, color=LINE):
-    """x, foot_y = ground position (feet). Figure is built upward from there."""
+def _stick_figure(draw, x, foot_y, t, phase=0.0, scale=1.0, arms_up=False, color=LINE,
+                   hat=None, robe=False, prop=None):
+    """x, foot_y = ground position (feet). Figure is built upward from there.
+
+    hat: None, "cap" (rounded brim), or "helmet" (flat brim line)
+    robe: draw a tapered robe/dress silhouette instead of straight legs
+    prop: None, "bag", "staff", "banner", "book", or "rifle" -- something
+          simple held in/near the swinging hand, kept generic rather than
+          any specific real-world costume, since the same scene types get
+          reused across many unrelated topics.
+    """
     total_h = 169 * scale
     y = foot_y - total_h  # head-top, matching the original layout math
     r = 22 * scale
     draw.ellipse([x - r, y, x + r, y + 2 * r], outline=color, width=3)
+
+    if hat == "cap":
+        draw.arc([x - r - 4, y - 16 * scale, x + r + 4, y + 8 * scale], 180, 360, fill=color, width=3)
+    elif hat == "helmet":
+        draw.line([(x - r - 4, y + 3), (x + r + 4, y + 3)], fill=color, width=3)
+        draw.arc([x - r - 2, y - 6 * scale, x + r + 2, y + 10 * scale], 180, 360, fill=color, width=3)
+
     body_top = y + 2 * r
     body_bot = body_top + 70 * scale
-    draw.line([(x, body_top), (x, body_bot)], fill=color, width=3)
+
     if arms_up:
         draw.line([(x, body_top + 15 * scale), (x - 30 * scale, body_top - 15 * scale)], fill=color, width=3)
         draw.line([(x, body_top + 15 * scale), (x + 30 * scale, body_top - 15 * scale)], fill=color, width=3)
+        hand = (x + 30 * scale, body_top - 15 * scale)
     else:
         sway = math.sin(t * 2 + phase) * 8 * scale
         draw.line([(x, body_top + 15 * scale), (x - 25 * scale + sway, body_top + 40 * scale)], fill=color, width=3)
         draw.line([(x, body_top + 15 * scale), (x + 25 * scale - sway, body_top + 40 * scale)], fill=color, width=3)
-    step = math.sin(t * 3 + phase) * 15 * scale
-    draw.line([(x, body_bot), (x - 20 * scale + step, body_bot + 55 * scale)], fill=color, width=3)
-    draw.line([(x, body_bot), (x + 20 * scale - step, body_bot + 55 * scale)], fill=color, width=3)
+        hand = (x + 25 * scale - sway, body_top + 40 * scale)
+
+    if robe:
+        hem = 34 * scale
+        draw.line([(x, body_top), (x, body_bot)], fill=color, width=3)
+        draw.polygon(
+            [(x - 9 * scale, body_bot), (x + 9 * scale, body_bot), (x + hem, body_bot + 60 * scale), (x - hem, body_bot + 60 * scale)],
+            outline=color, width=3,
+        )
+        draw.line([(x - 10 * scale, body_bot + 60 * scale), (x - 10 * scale, body_bot + 85 * scale)], fill=color, width=3)
+        draw.line([(x + 10 * scale, body_bot + 60 * scale), (x + 10 * scale, body_bot + 85 * scale)], fill=color, width=3)
+    else:
+        draw.line([(x, body_top), (x, body_bot)], fill=color, width=3)
+        step = math.sin(t * 3 + phase) * 15 * scale
+        draw.line([(x, body_bot), (x - 20 * scale + step, body_bot + 55 * scale)], fill=color, width=3)
+        draw.line([(x, body_bot), (x + 20 * scale - step, body_bot + 55 * scale)], fill=color, width=3)
+
+    if prop == "bag":
+        bx, by = x - 32 * scale, body_top + 38 * scale
+        draw.line([(x - 12 * scale, body_top + 4 * scale), (bx, by - 10 * scale)], fill=color, width=2)
+        draw.ellipse([bx - 15 * scale, by - 10 * scale, bx + 15 * scale, by + 12 * scale], outline=color, width=2)
+    elif prop == "staff":
+        draw.line([hand, (hand[0] + 4 * scale, foot_y)], fill=color, width=3)
+    elif prop == "banner":
+        top = (hand[0], hand[1] - 70 * scale)
+        draw.line([hand, top], fill=color, width=3)
+        draw.rectangle([top[0], top[1], top[0] + 32 * scale, top[1] + 24 * scale], outline=color, width=2)
+    elif prop == "book":
+        draw.rectangle([x - 15 * scale, body_top + 22 * scale, x + 15 * scale, body_top + 36 * scale], outline=color, width=2)
+    elif prop == "rifle":
+        draw.line([(x, body_top + 20 * scale), (x + 50 * scale, body_top + 5 * scale)], fill=color, width=4)
 
 
 def _building(draw, cx, base_y, t, width=240, height=330, color=LINE, flag=False):
@@ -335,8 +380,8 @@ def draw_jungle(draw, t, W, H):
         _tree(draw, W * xf, horizon + 60, t, phase=i, height=150 + 20 * (i % 2))
     for i, xf in enumerate([0.42, 0.5, 0.58]):
         _tree(draw, W * xf, horizon + 130, t, phase=i + 2, height=110)
-    _stick_figure(draw, W * 0.42, horizon + 150, t, phase=0)
-    _stick_figure(draw, W * 0.56, horizon + 150, t, phase=1.2)
+    _stick_figure(draw, W * 0.42, horizon + 150, t, phase=0, robe=True, prop="staff")
+    _stick_figure(draw, W * 0.56, horizon + 150, t, phase=1.2, hat="cap", prop="bag")
 
 
 def draw_building(draw, t, W, H):
@@ -344,8 +389,10 @@ def draw_building(draw, t, W, H):
     _building(draw, W * 0.22, horizon + 40, t, width=140, height=200)
     _building(draw, W * 0.82, horizon + 40, t, width=150, height=230)
     _building(draw, W * 0.5, horizon + 60, t, width=280, height=340, flag=True)
+    hats = ["cap", None, "cap", None]
+    props = [None, "bag", "book", None]
     for i, xf in enumerate([0.15, 0.35, 0.65, 0.85]):
-        _stick_figure(draw, W * xf, horizon + 60, t, phase=i, scale=0.55)
+        _stick_figure(draw, W * xf, horizon + 60, t, phase=i, scale=0.55, hat=hats[i], prop=props[i])
 
 
 def draw_crowd(draw, t, W, H):
@@ -353,27 +400,20 @@ def draw_crowd(draw, t, W, H):
     _building(draw, W * 0.5, horizon + 20, t, width=220, height=260)
     rows = [(horizon + 90, 0.9), (horizon + 150, 1.0)]
     positions = [0.12, 0.24, 0.36, 0.48, 0.6, 0.72, 0.84]
+    props = ["banner", None, "bag", None, "banner", None, "bag"]
     for row_i, (row_y, scale) in enumerate(rows):
         for i, xf in enumerate(positions):
             arms_up = (i + row_i) % 2 == 0
-            _stick_figure(draw, W * xf + (20 if row_i else 0), row_y, t, phase=i * 0.6 + row_i, scale=scale, arms_up=arms_up)
+            prop = None if arms_up else props[i]
+            _stick_figure(draw, W * xf + (20 if row_i else 0), row_y, t, phase=i * 0.6 + row_i,
+                          scale=scale, arms_up=arms_up, prop=prop)
 
 
 def draw_soldiers(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (140, 130, 130), (200, 170, 140), (90, 80, 65), hills_color=(60, 55, 55))
     _building(draw, W * 0.15, horizon + 20, t, width=120, height=160, color=(180, 170, 165))
     for i, xf in enumerate([0.28, 0.42, 0.56, 0.7, 0.84]):
-        x, foot_y = W * xf, horizon + 130
-        y = foot_y - 169
-        r = 20
-        draw.ellipse([x - r, y, x + r, y + 2 * r], outline=LINE, width=3)
-        draw.line([(x - r, y + 4), (x + r, y + 4)], fill=LINE, width=3)
-        body_top, body_bot = y + 2 * r, y + 2 * r + 70
-        draw.line([(x, body_top), (x, body_bot)], fill=LINE, width=3)
-        draw.line([(x, body_top + 20), (x + 50, body_top + 5)], fill=LINE, width=4)
-        step = math.sin(t * 2 + i) * 10
-        draw.line([(x, body_bot), (x - 18 + step, body_bot + 55)], fill=LINE, width=3)
-        draw.line([(x, body_bot), (x + 18 - step, body_bot + 55)], fill=LINE, width=3)
+        _stick_figure(draw, W * xf, horizon + 130, t, phase=i, scale=0.9, hat="helmet", prop="rifle")
 
 
 def draw_map(draw, t, W, H):
@@ -415,15 +455,16 @@ def draw_meeting(draw, t, W, H):
     draw.line([(tx0, ty), (tx1, ty)], fill=LINE, width=5)
     draw.line([(tx0 + 10, ty), (tx0 + 10, ty + 70)], fill=LINE, width=4)
     draw.line([(tx1 - 10, ty), (tx1 - 10, ty + 70)], fill=LINE, width=4)
+    props = [None, "book", "book", None]
     for i, xf in enumerate([0.3, 0.42, 0.58, 0.7]):
-        _stick_figure(draw, W * xf, ty, t, phase=i * 0.9, scale=0.55)
+        _stick_figure(draw, W * xf, ty, t, phase=i * 0.9, scale=0.55, prop=props[i])
 
 
 def draw_leader(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (90, 60, 70), (200, 110, 70), (55, 40, 40), sun=True,
                              sun_color=(230, 120, 90))
     for i, xf in enumerate([0.15, 0.3, 0.68, 0.85]):
-        _stick_figure(draw, W * xf, horizon + 140, t, phase=i * 1.3, scale=0.5)
+        _stick_figure(draw, W * xf, horizon + 140, t, phase=i * 1.3, scale=0.5, arms_up=(i % 2 == 0))
     cx = W / 2
     bob = math.sin(t * 1.5) * 4
     ped_y = horizon + 150
@@ -433,6 +474,8 @@ def draw_leader(draw, t, W, H):
     head_cy = foot_y - 210 + bob
     draw.ellipse([cx - r, head_cy - r, cx + r, head_cy + r], outline=LINE, width=5)
     draw.rectangle([cx - 85, head_cy + r, cx + 85, foot_y], outline=LINE, width=5)
+    # simple sash, suggesting ceremonial dress without any specific likeness
+    draw.line([(cx - 70, head_cy + r + 10), (cx + 40, foot_y - 15)], fill=LINE, width=4)
 
 
 def draw_fire(draw, t, W, H):
@@ -498,8 +541,7 @@ def draw_exodus(draw, t, W, H):
     y = horizon + 140
     for i in range(6):
         x = ((t * 55 + i * 90) % (W + 150)) - 75
-        _stick_figure(draw, x, y, t, phase=i * 0.5, scale=0.65)
-        draw.ellipse([x - 10, y - 60, x + 15, y - 40], outline=LINE, width=2)  # bundle
+        _stick_figure(draw, x, y, t, phase=i * 0.5, scale=0.65, robe=(i % 2 == 0), prop="bag")
 
 
 SCENES = {

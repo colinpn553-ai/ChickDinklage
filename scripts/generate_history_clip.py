@@ -126,7 +126,7 @@ def generate_script(topic: str) -> tuple[str, list[dict]]:
         },
         json={
             "model": os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5"),
-            "max_tokens": 1200,
+            "max_tokens": 4096,
             "messages": [{"role": "user", "content": prompt}],
         },
         timeout=90,

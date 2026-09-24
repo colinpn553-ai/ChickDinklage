@@ -6,13 +6,29 @@ cron schedule; you queue up clips by committing them to the repo, and each
 scheduled run posts the oldest one still waiting.
 
 **Scope note:** this only publishes clips you already have the rights to
-post (your own footage, or clips you have explicit permission to use). It
-does not download or scrape video from anywhere.
+post — your own footage, clips you have explicit permission to use, or
+(for the automated story pipeline below) originally-generated content and
+licensed stock footage from Pexels. It does not download or scrape video
+from creators who haven't licensed it for reuse.
+
+## Two ways clips get into the queue
+
+1. **Manual**: drop a clip into `queue/pending/` yourself (see "Queueing a
+   clip" below).
+2. **Automated**: the `generate-story-clip` workflow
+   (`.github/workflows/generate-story-clip.yml`) runs on its own daily
+   schedule, generates an original short horror story via the Anthropic
+   API, narrates it with free text-to-speech, lays it over horror-themed
+   stock footage pulled from the Pexels API, and drops the assembled Reel
+   into `queue/pending/` automatically — see "Automated story pipeline
+   setup" below.
+
+Either way, the posting side works the same:
 
 ## How it works
 
-1. You drop an `.mp4` file (and an optional `.json` caption file) into
-   `queue/pending/` and push it to GitHub.
+1. A clip lands in `queue/pending/` (manually or via the generator above),
+   along with an optional `.json` caption file.
 2. On its schedule, the `post-reel` workflow checks out the repo, runs
    `scripts/post_to_instagram.py`, which:
    - picks the oldest file in `queue/pending/`
@@ -77,7 +93,41 @@ scheduled run will fail with an auth error.
 Note: this flow calls `graph.instagram.com`, not `graph.facebook.com` —
 that's already reflected in `scripts/post_to_instagram.py`.
 
-## Queueing a clip
+## Automated story pipeline setup
+
+Two more API keys, both free tier, both self-service (you create these
+yourself, logged in as you):
+
+1. **Anthropic API key** (for story generation):
+   - Go to https://console.anthropic.com → API Keys → Create Key
+   - This is a paid-as-you-go API (very cheap per story; a few hundred
+     tokens each), separate from any Claude subscription
+2. **Pexels API key** (for stock footage, free):
+   - Go to https://www.pexels.com/api/ → sign up → copy your API key
+3. Add both to this repo's secrets (**Settings → Secrets and variables →
+   Actions**):
+   - `ANTHROPIC_API_KEY`
+   - `PEXELS_API_KEY`
+
+Once both secrets are set, the `generate-story-clip` workflow runs daily
+at 12:00 UTC (edit the cron in
+`.github/workflows/generate-story-clip.yml` to change cadence), or trigger
+it manually from the Actions tab the same way as the posting workflow.
+
+Notes on this pipeline:
+- Narration uses `gTTS`, a free library built on Google Translate's
+  text-to-speech endpoint. It's unofficial (not a documented public API),
+  so it's usually reliable but can occasionally fail or get rate-limited —
+  if a run fails here, retrying usually works.
+- The story prompt explicitly instructs the model to avoid real people,
+  real tragedies, and copyrighted characters/franchises, to keep generated
+  stories original and avoid depicting real events.
+- Output video is cropped/scaled to vertical 1080x1920 for Reels.
+- Filenames are auto-numbered based on how many clips already exist in
+  `queue/pending/` + `queue/posted/`, so they interleave safely with any
+  clips you queue manually.
+
+## Queueing a clip manually
 
 ```
 queue/pending/001_my_clip.mp4

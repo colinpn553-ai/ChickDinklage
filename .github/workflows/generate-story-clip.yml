@@ -1,0 +1,44 @@
+name: Generate Scary Story Clip
+
+on:
+  schedule:
+    # Runs daily at 12:00 UTC, a few hours ahead of the posting workflow's
+    # 16:00 UTC schedule so there's always something queued to post.
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: generate-story-clip
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - run: pip install -r scripts/requirements.txt
+
+      - name: Generate story clip
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: python scripts/generate_story_clip.py
+
+      - name: Commit new clip
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add queue/pending/
+          git diff --cached --quiet || git commit -m "Generate new scary story clip"
+          git push

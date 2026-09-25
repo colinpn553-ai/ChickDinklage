@@ -108,8 +108,14 @@ likeness; fire = destruction/war damage, kept non-graphic; prison = \
 detention/oppression; mosque = Islamic religious context; church = \
 Christian religious context; exodus = displacement/refugees fleeing.)
 
+- Do not glorify or promote any regime, ideology, or leader. Describe what they \
+did, how they gained and used power, and the consequences, plainly and \
+accurately.
 - Also pick one "era" for the illustrations' clothing: "early_1900s" if the \
 topic is set mostly before about 1930, otherwise "modern".
+- Also pick one "setting": "europe" if the events take place mainly in Europe \
+in the period discussed (up to about 1945), so the illustrations draw only \
+characters who fit that setting; otherwise "global".
 - For a beat whose scene is "map", also add "places": a list of 1-4 ISO 3166-1 \
 alpha-2 codes (e.g. "KH") for the PRESENT-DAY countries the beat is about, main \
 one first. The map shows present-day borders, so use today's countries even if \
@@ -124,7 +130,7 @@ before 1998). When unsure, omit "flag". Never add "flag" to other scenes.
 
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {{"title": "Short punchy title, no quotes", "era": "modern_or_early_1900s", \
-"beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
+"setting": "europe_or_global", "beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
 (map beats may also carry "places": ["XX"]; building/meeting/leader beats may \
 also carry "flag": "xx" under the rules above.)
 """
@@ -137,7 +143,7 @@ def env(name: str) -> str:
     return value
 
 
-def generate_script(topic: str) -> tuple[str, str, list[dict]]:
+def generate_script(topic: str) -> tuple[str, str, str, list[dict]]:
     api_key = env("ANTHROPIC_API_KEY")
     prompt = HISTORY_PROMPT.format(topic=topic, scenes=", ".join(SCENE_VOCAB))
     resp = requests.post(
@@ -171,6 +177,7 @@ def generate_script(topic: str) -> tuple[str, str, list[dict]]:
     data = json.loads(text)
     title = data["title"].strip()
     era = data.get("era") if data.get("era") in ("modern", "early_1900s") else "modern"
+    setting = data.get("setting") if data.get("setting") in ("europe", "global") else "global"
     beats = data["beats"]
     for beat in beats:
         if beat.get("scene") not in SCENE_VOCAB:
@@ -181,7 +188,7 @@ def generate_script(topic: str) -> tuple[str, str, list[dict]]:
         beat["places"] = [c.upper() for c in (raw_places or []) if valid_place(c)][:4]
         flag = beat.get("flag") if beat["scene"] in ("building", "meeting", "leader") else None
         beat["flag"] = flag.lower() if valid_flag(flag) else None
-    return title, era, beats
+    return title, era, setting, beats
 
 
 def synthesize_narration(full_text: str, voice_dir: Path, out_path: Path) -> None:
@@ -561,7 +568,29 @@ ROLE_POOLS = {
 ROLE_POOLS["mixed"] = ROLE_POOLS["civilian"] + ROLE_POOLS["rural"] + ROLE_POOLS["official"]
 ROLE_POOLS["urban"] = ROLE_POOLS["civilian"] + ROLE_POOLS["official"]
 
-CAST = {"seed": 0, "era": "modern", "img": None, "sprites": None}
+# Setting-aware casting. When a script is set in Europe, illustrations draw
+# only from characters whose depicted appearance fits the period's
+# population there, rather than an evenly mixed modern crowd -- the same
+# reason early-1900s topics get period clothing. This is a plain
+# historical-accuracy filter based on how each sprite looks; it is not
+# used for "global" topics. (Small pools mean repeated faces; a bigger,
+# setting-specific cast is the real fix.)
+EUROPE_FIT = {
+    "elder_man_vest", "woman_red_cardigan", "man_teal_polo", "farmer_overalls",
+    "teen_boy_bag", "elder_woman_shawl", "man_navy_suit", "woman_blazer",
+    "clerk_vest_bowtie", "soldier_helmet", "officer_peaked_cap",
+    "man_bowler_1910s", "woman_hat_dress_1910s",
+}
+EUROPE_EARLY = {  # early-1900s Europe: period-plausible clothing AND appearance
+    "civilian": ["man_bowler_1910s", "woman_hat_dress_1910s", "farmer_overalls", "elder_woman_shawl",
+                 "clerk_vest_bowtie", "man_navy_suit", "elder_man_vest"],
+    "official": ["man_navy_suit", "clerk_vest_bowtie", "man_bowler_1910s", "woman_hat_dress_1910s"],
+    "rural": ["farmer_overalls", "elder_woman_shawl", "elder_man_vest"],
+    "military": ["soldier_helmet", "officer_peaked_cap"],
+}
+EUROPE_EARLY["mixed"] = EUROPE_EARLY["urban"] = EUROPE_EARLY["civilian"]
+
+CAST = {"seed": 0, "era": "modern", "setting": "global", "img": None, "sprites": None}
 _SPRITE_CACHE: dict = {}
 
 
@@ -581,6 +610,11 @@ def _cast(role: str, n: int, salt: int = 0) -> list:
     pool = list(ROLE_POOLS[role])
     if CAST["era"] == "early_1900s" and role in ("civilian", "official", "rural", "mixed", "urban"):
         pool = ROLE_POOLS["period"] + (ROLE_POOLS["rural"][:2] if role in ("rural", "mixed") else [])
+    if CAST["setting"] == "europe":
+        if CAST["era"] == "early_1900s" and role in EUROPE_EARLY:
+            pool = list(EUROPE_EARLY[role])
+        else:
+            pool = [n for n in pool if n in EUROPE_FIT] or pool
     rng = random.Random(CAST["seed"] * 1009 + salt)
     rng.shuffle(pool)
     return [pool[i % len(pool)] for i in range(n)]
@@ -1136,7 +1170,9 @@ def main() -> int:
     topic = os.environ.get("HISTORY_TOPIC") or random.choice(HISTORY_TOPICS)
     print(f"Topic: {topic}")
 
-    title, era, beats = generate_script(topic)
+    title, era, setting, beats = generate_script(topic)
+    forced = os.environ.get("HISTORY_SETTING", "").strip().lower()
+    CAST["setting"] = forced if forced in ("europe", "global") else setting
     CAST["era"] = era
     CAST["seed"] = int(hashlib.md5(title.encode("utf-8")).hexdigest()[:8], 16)
     print(f"Generated: {title} ({len(beats)} beats)")

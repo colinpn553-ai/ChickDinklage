@@ -12,6 +12,11 @@ on:
         description: "Optional: specific topic (leave blank to pick randomly from HISTORY_TOPICS)"
         required: false
         type: string
+      setting:
+        description: "Optional: force the casting setting (europe = only characters fitting a European setting; blank = let the script decide)"
+        required: false
+        type: choice
+        options: ["", "europe", "global"]
 
 permissions:
   contents: write
@@ -39,6 +44,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           HISTORY_TOPIC: ${{ inputs.topic }}
+          HISTORY_SETTING: ${{ inputs.setting }}
         run: python scripts/generate_history_clip.py
 
       - name: Commit new clip

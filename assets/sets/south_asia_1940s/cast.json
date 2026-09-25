@@ -1,0 +1,30 @@
+{
+  "note": "South Asia c. 1940s (British India / Partition era). Sprites cut from generated character sheets; backdrops fitted by scripts/prepare_backdrop.py.",
+  "roles": {
+    "civilian": ["sa_men_2_1", "sa_men_2_3", "sa_men_2_4", "sa_men_3_1", "sa_men_3_2", "sa_wom_1_1", "sa_wom_1_2", "sa_wom_2_1", "sa_vil_2_1", "sa_vil_3_2"],
+    "rural": ["sa_vil_1_3", "sa_vil_2_1", "sa_vil_2_2", "sa_vil_3_2", "sa_vil_3_3", "sa_wom_2_2", "sa_wom_2_3"],
+    "official": ["sa_off_2_1", "sa_off_2_2", "sa_off_2_3", "sa_off_2_5", "sa_off_3_1", "sa_off_3_2", "sa_off_3_3"],
+    "military": ["sa_mil_2_1", "sa_mil_2_2", "sa_mil_2_3", "sa_mil_2_4", "sa_mil_2_5"],
+    "mixed": ["sa_men_2_1", "sa_men_2_3", "sa_men_3_1", "sa_men_3_2", "sa_wom_1_1", "sa_wom_2_1", "sa_vil_2_2", "sa_vil_3_2", "sa_vil_3_3", "sa_wom_2_2", "sa_off_2_1", "sa_off_3_2"],
+    "urban": ["sa_men_2_1", "sa_men_2_3", "sa_men_2_4", "sa_men_3_1", "sa_wom_1_1", "sa_wom_1_2", "sa_wom_2_1", "sa_off_2_1", "sa_off_2_2", "sa_off_2_3", "sa_off_3_1", "sa_off_3_3"]
+  },
+  "backdrops": {
+    "jungle": "village",
+    "building": "admin",
+    "crowd": "bazaar",
+    "soldiers": "road",
+    "meeting": "council",
+    "leader": "admin",
+    "fire": "street",
+    "prison": "prison",
+    "mosque": "mosque",
+    "church": "church",
+    "temple": "temple",
+    "exodus": "road"
+  },
+  "scene_layout": {
+    "mosque": {"foot_dy": 120, "height": 300},
+    "temple": {"foot_dy": 120, "height": 300},
+    "church": {"foot_dy": 150, "height": 340}
+  }
+}

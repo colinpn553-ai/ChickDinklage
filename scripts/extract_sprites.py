@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 SPRITE_H = 1000
 EDGE = 12
+BG_TOL = 22
 
 
 def foreground_mask(im: Image.Image) -> np.ndarray:
@@ -27,6 +28,11 @@ def foreground_mask(im: Image.Image) -> np.ndarray:
     rgb = np.asarray(im.convert("RGB")).astype(int)
     h, w, _ = rgb.shape
     near = ((rgb.min(axis=2) > 200) & ((rgb.max(axis=2) - rgb.min(axis=2)) < 16))
+    # Some sheets sit on a cream/beige panel instead of white: also treat
+    # anything close to the median color of a ring just inside the border as bg.
+    ring = np.concatenate([rgb[EDGE + 6, EDGE + 6:-EDGE - 6], rgb[-EDGE - 7, EDGE + 6:-EDGE - 6],
+                           rgb[EDGE + 6:-EDGE - 6, EDGE + 6], rgb[EDGE + 6:-EDGE - 6, -EDGE - 7]])
+    near |= np.abs(rgb - np.median(ring, axis=0)).max(axis=2) < BG_TOL
     # RGB mode: PIL's floodfill silently no-ops on single-band images in some versions.
     mask = Image.fromarray(near.astype(np.uint8) * 255, "L").convert("RGB")
     inset = EDGE + 8  # the very edge often has a darker vignette ring

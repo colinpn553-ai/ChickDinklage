@@ -79,7 +79,7 @@ HISTORY_TOPICS = [
 SCENE_VOCAB = [
     "jungle", "building", "crowd", "soldiers", "map",
     "meeting", "leader", "fire", "prison", "mosque",
-    "church", "exodus",
+    "church", "temple", "exodus",
 ]
 
 HISTORY_PROMPT = """You are writing a short, factual history explainer for a narrated \
@@ -106,7 +106,7 @@ map = borders/geography/territory changes; meeting = negotiations/planning; \
 leader = a ruler or leading figure being discussed abstractly, never a named \
 likeness; fire = destruction/war damage, kept non-graphic; prison = \
 detention/oppression; mosque = Islamic religious context; church = \
-Christian religious context; exodus = displacement/refugees fleeing.)
+Christian religious context; temple = Hindu, Sikh or Buddhist religious \ncontext; exodus = displacement/refugees fleeing.)
 
 - Do not glorify or promote any regime, ideology, or leader. Describe what they \
 did, how they gained and used power, and the consequences, plainly and \
@@ -115,7 +115,7 @@ accurately.
 topic is set mostly before about 1930, otherwise "modern".
 - Also pick one "setting": "europe" if the events take place mainly in Europe \
 in the period discussed (up to about 1945), so the illustrations draw only \
-characters who fit that setting; otherwise "global".
+characters who fit that setting; "south_asia" if the events take place mainly in the Indian subcontinent (India, Pakistan, Bangladesh, Sri Lanka, Nepal) in the period discussed (up to about 1950); otherwise "global".
 - For a beat whose scene is "map", also add "places": a list of 1-4 ISO 3166-1 \
 alpha-2 codes (e.g. "KH") for the PRESENT-DAY countries the beat is about, main \
 one first. The map shows present-day borders, so use today's countries even if \
@@ -130,7 +130,7 @@ before 1998). When unsure, omit "flag". Never add "flag" to other scenes.
 
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {{"title": "Short punchy title, no quotes", "era": "modern_or_early_1900s", \
-"setting": "europe_or_global", "beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
+"setting": "europe_or_south_asia_or_global", "beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
 (map beats may also carry "places": ["XX"]; building/meeting/leader beats may \
 also carry "flag": "xx" under the rules above.)
 """
@@ -177,7 +177,7 @@ def generate_script(topic: str) -> tuple[str, str, str, list[dict]]:
     data = json.loads(text)
     title = data["title"].strip()
     era = data.get("era") if data.get("era") in ("modern", "early_1900s") else "modern"
-    setting = data.get("setting") if data.get("setting") in ("europe", "global") else "global"
+    setting = data.get("setting") if data.get("setting") in SETTINGS else "global"
     beats = data["beats"]
     for beat in beats:
         if beat.get("scene") not in SCENE_VOCAB:
@@ -560,7 +560,9 @@ SETS_DIR = REPO_ROOT / "assets" / "sets"
 # A "set" is a per-setting asset pack: its own cast (setting-accurate
 # characters) plus painted backdrops. Chosen by (setting, era); falls back to
 # the generic base cast + drawn scenery when no set matches.
-SET_FOR = {("europe", "early_1900s"): "europe_1920s"}
+SET_FOR = {("europe", "early_1900s"): "europe_1920s",
+           ("south_asia", None): "south_asia_1940s"}  # None = any era
+SETTINGS = ("europe", "south_asia", "global")
 
 ROLE_POOLS = {
     "civilian": ["elder_man_vest", "woman_red_cardigan", "young_man_hoodie",
@@ -1159,8 +1161,10 @@ def draw_set_scene(draw, t, W, H):
         _row(draw, t, "civilian", [0.16, 0.84], 330, 420, horizon, W, 11, flip_odd=True)
     elif scene == "prison":
         _person(draw, _cast("civilian", 1, salt=12)[0], W / 2, horizon + 300, 460, t, phase=0, seed=1)
-    elif scene in ("mosque", "church"):
-        _row(draw, t, "civilian", [0.17, 0.83, 0.68], 310, 400, horizon, W, 13 if scene == "mosque" else 14)
+    elif scene in ("mosque", "church", "temple"):
+        lay = (_set_manifest() or {}).get("scene_layout", {}).get(scene, {})
+        _row(draw, t, "civilian", [0.17, 0.83, 0.68, 0.4], lay.get("foot_dy", 310), lay.get("height", 400),
+             horizon, W, {"mosque": 13, "church": 14}.get(scene, 16))
     elif scene == "exodus":
         walkers = _cast("mixed", 7, salt=15)
         span = W + 300
@@ -1183,6 +1187,7 @@ SCENES = {
     "prison": draw_prison,
     "mosque": draw_mosque,
     "church": draw_church,
+    "temple": draw_building,  # generic stand-in when no set supplies a temple backdrop
     "exodus": draw_exodus,
 }
 
@@ -1321,9 +1326,9 @@ def main() -> int:
 
     title, era, setting, beats = generate_script(topic)
     forced = os.environ.get("HISTORY_SETTING", "").strip().lower()
-    CAST["setting"] = forced if forced in ("europe", "global") else setting
+    CAST["setting"] = forced if forced in SETTINGS else setting
     CAST["era"] = era
-    chosen = os.environ.get("HISTORY_SET", "").strip() or SET_FOR.get((CAST["setting"], era))
+    chosen = os.environ.get("HISTORY_SET", "").strip() or SET_FOR.get((CAST["setting"], era)) or SET_FOR.get((CAST["setting"], None))
     CAST["set"] = chosen if chosen and (SETS_DIR / chosen / "cast.json").is_file() else None
     CAST["sprites"] = None
     print(f"Asset set: {CAST['set'] or 'none (generic cast + drawn scenery)'}")

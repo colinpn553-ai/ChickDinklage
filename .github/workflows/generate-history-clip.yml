@@ -13,10 +13,10 @@ on:
         required: false
         type: string
       setting:
-        description: "Optional: force the casting setting (europe = only characters fitting a European setting; blank = let the script decide)"
+        description: "Optional: force the casting setting (europe / south_asia = use that region's cast and backdrops; blank = let the script decide)"
         required: false
         type: choice
-        options: ["", "europe", "global"]
+        options: ["", "europe", "south_asia", "global"]
 
 permissions:
   contents: write

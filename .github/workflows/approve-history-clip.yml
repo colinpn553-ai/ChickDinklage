@@ -41,4 +41,5 @@ jobs:
             git mv "$SRC_JSON" "queue/pending/${BASE}.json"
           fi
           git commit -m "Approve history clip: ${BASE}"
+          git pull --rebase origin main
           git push

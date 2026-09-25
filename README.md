@@ -140,6 +140,19 @@ trigger manually from the Actions tab, optionally passing a specific
    are present-day, the prompt tells the model to leave `flag` unset when
    the period's state used a different flag (e.g. Khmer Rouge-era
    Cambodia), and everything still goes through the review step.
+   **Asset sets** replace the generic cast and drawn scenery when a
+   setting has its own pack. `assets/sets/<name>/` holds `cast.json`
+   (which sprites fill which role, and which backdrop each scene uses),
+   `characters/` (transparent sprites cut from generated character sheets
+   with `scripts/extract_sprites.py`) and `backdrops/` (painted scenes
+   fitted so their ground line sits on the horizon the sprites stand on,
+   via `scripts/prepare_backdrop.py`). `SET_FOR` in the generator maps
+   (setting, era) to a set; `europe_1920s` is used for early-1900s
+   European topics, and `HISTORY_SET` overrides the choice. Sets were
+   generated with Adobe Firefly. To add one, generate backdrops and
+   character sheets on a plain white background, run the two scripts, and
+   write a `cast.json`. Scenes without a backdrop, and the map scene,
+   still use the drawn versions.
 5. Writes the result to `queue/review_pending/`, **not**
    `queue/pending/`.
 

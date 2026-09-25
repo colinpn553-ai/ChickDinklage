@@ -40,7 +40,7 @@ from pathlib import Path
 
 import requests
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REVIEW_DIR = REPO_ROOT / "queue" / "review_pending"
@@ -556,6 +556,11 @@ def _building(draw, cx, base_y, t, width=240, height=330, color=(150, 140, 130),
 # stick figures so generation never breaks.
 
 CAST_DIR = REPO_ROOT / "assets" / "characters" / "base"
+SETS_DIR = REPO_ROOT / "assets" / "sets"
+# A "set" is a per-setting asset pack: its own cast (setting-accurate
+# characters) plus painted backdrops. Chosen by (setting, era); falls back to
+# the generic base cast + drawn scenery when no set matches.
+SET_FOR = {("europe", "early_1900s"): "europe_1920s"}
 
 ROLE_POOLS = {
     "civilian": ["elder_man_vest", "woman_red_cardigan", "young_man_hoodie",
@@ -590,15 +595,17 @@ EUROPE_EARLY = {  # early-1900s Europe: period-plausible clothing AND appearance
 }
 EUROPE_EARLY["mixed"] = EUROPE_EARLY["urban"] = EUROPE_EARLY["civilian"]
 
-CAST = {"seed": 0, "era": "modern", "setting": "global", "img": None, "sprites": None}
+CAST = {"seed": 0, "era": "modern", "setting": "global", "img": None, "sprites": None,
+        "set": None, "scene": None}
 _SPRITE_CACHE: dict = {}
 
 
 def _load_sprites() -> dict:
     if CAST["sprites"] is None:
         sprites = {}
-        if CAST_DIR.is_dir():
-            for f in sorted(CAST_DIR.glob("*.png")):
+        cast_dir = SETS_DIR / CAST["set"] / "characters" if CAST["set"] else CAST_DIR
+        if cast_dir.is_dir():
+            for f in sorted(cast_dir.glob("*.png")):
                 sprites[f.stem] = Image.open(f).convert("RGBA")
         CAST["sprites"] = sprites
     return CAST["sprites"]
@@ -607,6 +614,12 @@ def _load_sprites() -> dict:
 def _cast(role: str, n: int, salt: int = 0) -> list:
     """n character names for a role, deterministic per clip seed. Early-1900s
     clips swap civilian/rural/official roles for the period-dress pool."""
+    manifest = _set_manifest()
+    if manifest and role in manifest.get("roles", {}):
+        pool = list(manifest["roles"][role])  # a full set is already setting-accurate
+        rng = random.Random(CAST["seed"] * 1009 + salt)
+        rng.shuffle(pool)
+        return [pool[i % len(pool)] for i in range(n)]
     pool = list(ROLE_POOLS[role])
     if CAST["era"] == "early_1900s" and role in ("civilian", "official", "rural", "mixed", "urban"):
         pool = ROLE_POOLS["period"] + (ROLE_POOLS["rural"][:2] if role in ("rural", "mixed") else [])
@@ -1026,6 +1039,138 @@ def draw_exodus(draw, t, W, H):
                 phase=i * 0.7, hop=9, seed=i + 2)
 
 
+# --- Set scenes: painted backdrop + setting-accurate cast ------------------
+# When a set is active (see SET_FOR) every scene except the map is drawn as a
+# painted backdrop (fitted to the canvas by scripts/prepare_backdrop.py so its
+# ground line sits on HORIZON_FRAC) with the set's cast standing on it and a
+# few animated touches. Scenes the set has no backdrop for use the drawn ones.
+
+_SET_STATE: dict = {"manifest": None, "loaded_for": None, "backdrops": {}}
+
+
+def _set_manifest():
+    name = CAST["set"]
+    if not name:
+        return None
+    if _SET_STATE["loaded_for"] != name:
+        path = SETS_DIR / name / "cast.json"
+        _SET_STATE["manifest"] = json.loads(path.read_text()) if path.is_file() else None
+        _SET_STATE["loaded_for"] = name
+        _SET_STATE["backdrops"] = {}
+    return _SET_STATE["manifest"]
+
+
+def _set_backdrop(scene: str, W: int, H: int):
+    manifest = _set_manifest()
+    if not manifest:
+        return None
+    file = manifest.get("backdrops", {}).get(scene)
+    if not file:
+        return None
+    key = (file, W, H)
+    if key not in _SET_STATE["backdrops"]:
+        path = SETS_DIR / CAST["set"] / "backdrops" / f"{file}.jpg"
+        if not path.is_file():
+            _SET_STATE["backdrops"][key] = None
+        else:
+            im = Image.open(path).convert("RGB")
+            _SET_STATE["backdrops"][key] = im if im.size == (W, H) else im.resize((W, H), Image.LANCZOS)
+    return _SET_STATE["backdrops"][key]
+
+
+def _flames(draw, cx, base_y, t, phase=0.0, scale=1.0):
+    """A cluster of flickering flame tongues with a soft glow and smoke,
+    composited with alpha onto the frame."""
+    img = CAST["img"]
+    pw, ph = int(340 * scale), int(620 * scale)
+    layer = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    bx, by = pw // 2, ph - int(40 * scale)
+    glow = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse([bx - 140 * scale, by - 190 * scale, bx + 140 * scale, by + 30 * scale], fill=(255, 150, 60, 85))
+    layer.alpha_composite(glow.filter(ImageFilter.GaussianBlur(28 * scale)))
+    for k, (dx, hh, col) in enumerate([(-70, 150, (215, 80, 35)), (0, 230, (235, 120, 45)), (70, 170, (215, 80, 35)),
+                                       (-30, 120, (250, 170, 70)), (35, 140, (250, 170, 70))]):
+        flick = math.sin(t * 9 + phase + k * 1.7) * 14 * scale
+        sway = math.sin(t * 5 + phase + k) * 12 * scale
+        x = bx + dx * scale
+        h = hh * scale
+        w = 46 * scale
+        left, right = [], []
+        for j in range(13):  # teardrop outline: round base, curling tip
+            u = j / 12
+            prof = w * (math.sin(math.pi * min(1.0, u ** 0.6)) ** 0.8) * (1 - 0.15 * u)
+            cx_u = x + (sway * 1.4) * u * u
+            yy = by - h * u + (flick * u)
+            left.append((cx_u - prof, yy))
+            right.append((cx_u + prof, yy))
+        ld.polygon(left + right[::-1], fill=col + (235,))
+        inner = [(bx_ + (px - bx_) * 0.5, by - (by - py) * 0.62) for bx_ in (x,) for px, py in left + right[::-1]]
+        ld.polygon(inner, fill=(255, 200, 95, 235))
+    for k in range(5):  # smoke puffs drifting up
+        rise = (t * 50 + k * 55 + phase * 30) % 280
+        sx = bx + math.sin(t * 1.3 + k + phase) * 25 * scale
+        sy = by - 240 * scale - rise * scale * 0.6
+        a = int(150 * (1 - rise / 280))
+        r = (20 + rise * 0.08) * scale
+        ld.ellipse([sx - r, sy - r, sx + r, sy + r], fill=(70, 62, 60, a))
+    img.paste(layer, (int(cx - pw / 2), int(base_y - ph + 40 * scale)), layer)
+
+
+def _set_flag(draw, t, W, horizon, x_frac=0.09):
+    if valid_flag(SCENE_CTX["flag"]):
+        pole_x = W * x_frac
+        draw.line([(pole_x, horizon - 420), (pole_x, horizon + 260)], fill=(200, 190, 175), width=7)
+        _paste_flag(SCENE_CTX["flag"], pole_x, horizon - 420, 340, t, wave=9)
+
+
+def _row(draw, t, role, xs, foot_dy, height, horizon, W, salt, flip_odd=True, phase_step=1.1):
+    names = _cast(role, len(xs), salt=salt)
+    for i, xf in enumerate(xs):
+        _person(draw, names[i], W * xf, horizon + foot_dy, height, t, phase=i * phase_step,
+                flip=(i % 2 == 1) if flip_odd else (xf > 0.5), seed=i)
+
+
+def draw_set_scene(draw, t, W, H):
+    scene = CAST["scene"]
+    CAST["img"].paste(_set_backdrop(scene, W, H), (0, 0))
+    horizon = H * HORIZON_FRAC
+    if scene == "jungle":  # countryside
+        _row(draw, t, "rural", [0.3, 0.7, 0.5], 300, 430, horizon, W, 1)
+    elif scene == "building":
+        _set_flag(draw, t, W, horizon)
+        _row(draw, t, "urban", [0.2, 0.4, 0.62, 0.82], 280, 450, horizon, W, 2, flip_odd=False)
+    elif scene == "crowd":
+        _row(draw, t, "mixed", [0.1, 0.23, 0.36, 0.5, 0.63, 0.76, 0.9], 150, 330, horizon, W, 4, phase_step=0.9)
+        _row(draw, t, "mixed", [0.18, 0.34, 0.5, 0.66, 0.82], 290, 450, horizon, W, 5)
+    elif scene == "soldiers":
+        _row(draw, t, "military", [0.3, 0.5, 0.7], 180, 330, horizon, W, 6, phase_step=1.4)
+        _row(draw, t, "military", [0.16, 0.39, 0.62, 0.85], 300, 460, horizon, W, 7, phase_step=0.8)
+    elif scene == "meeting":
+        _set_flag(draw, t, W, horizon)
+        _row(draw, t, "official", [0.27, 0.42, 0.58, 0.73], 290, 470, horizon, W, 8, flip_odd=False)
+    elif scene == "leader":
+        _set_flag(draw, t, W, horizon, x_frac=0.16)
+        _row(draw, t, "mixed", [0.1, 0.24, 0.37, 0.63, 0.76, 0.9], 250, 320, horizon, W, 9, flip_odd=False)
+        _person(draw, _cast("official", 1, salt=10)[0], W / 2, horizon + 340, 600, t, phase=0, seed=2)
+    elif scene == "fire":
+        _flames(draw, W * 0.30, horizon + 60, t, phase=0.0, scale=1.6)
+        _flames(draw, W * 0.72, horizon + 40, t, phase=2.0, scale=1.3)
+        _row(draw, t, "civilian", [0.16, 0.84], 330, 420, horizon, W, 11, flip_odd=True)
+    elif scene == "prison":
+        _person(draw, _cast("civilian", 1, salt=12)[0], W / 2, horizon + 300, 460, t, phase=0, seed=1)
+    elif scene in ("mosque", "church"):
+        _row(draw, t, "civilian", [0.17, 0.83, 0.68], 310, 400, horizon, W, 13 if scene == "mosque" else 14)
+    elif scene == "exodus":
+        walkers = _cast("mixed", 7, salt=15)
+        span = W + 300
+        for i in range(7):
+            x = ((t * 55 + i * (span / 7)) % span) - 150
+            far = i % 2 == 0
+            _person(draw, walkers[i], x, horizon + (240 if far else 300), 300 if far else 400, t,
+                    phase=i * 0.7, hop=9, seed=i + 2)
+
+
 SCENES = {
     "jungle": draw_jungle,
     "building": draw_building,
@@ -1065,7 +1210,11 @@ def render_frames(beats: list[dict], duration: float, frames_dir: Path) -> None:
             if beat["start"] <= t:
                 beat_idx = bi
         active_beat = beats[beat_idx] if beats else {"start": 0, "end": duration, "scene": "map"}
-        scene_fn = SCENES.get(active_beat["scene"], SCENES["map"])
+        scene_name = active_beat["scene"] if active_beat["scene"] in SCENES else "map"
+        scene_fn = SCENES[scene_name]
+        CAST["scene"] = scene_name
+        if CAST["set"] and scene_name != "map" and _set_backdrop(scene_name, big_W, big_H) is not None:
+            scene_fn = draw_set_scene
 
         img = Image.new("RGB", (big_W, big_H), (35, 10, 10))
         draw = ImageDraw.Draw(img)
@@ -1174,6 +1323,10 @@ def main() -> int:
     forced = os.environ.get("HISTORY_SETTING", "").strip().lower()
     CAST["setting"] = forced if forced in ("europe", "global") else setting
     CAST["era"] = era
+    chosen = os.environ.get("HISTORY_SET", "").strip() or SET_FOR.get((CAST["setting"], era))
+    CAST["set"] = chosen if chosen and (SETS_DIR / chosen / "cast.json").is_file() else None
+    CAST["sprites"] = None
+    print(f"Asset set: {CAST['set'] or 'none (generic cast + drawn scenery)'}")
     CAST["seed"] = int(hashlib.md5(title.encode("utf-8")).hexdigest()[:8], 16)
     print(f"Generated: {title} ({len(beats)} beats)")
 

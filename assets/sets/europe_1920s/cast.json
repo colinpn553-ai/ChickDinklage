@@ -1,0 +1,24 @@
+{
+  "note": "Illustrated cast + Firefly backdrops for early-1900s European settings. Sprites are cut from generated character sheets (scripts/extract_sprites.py); backdrops are fitted to the video canvas by scripts/prepare_backdrop.py.",
+  "roles": {
+    "civilian": ["civ_1_2", "civ_2_1", "civ_2_2", "civ_2_3", "civ_2_4", "civ_2_5", "civ_3_1", "civ_3_2", "civ_3_3", "civ_3_5"],
+    "rural": ["civ_2_1", "civ_3_3", "civ_3_5", "civ_2_4", "civ_3_2", "civ_1_2"],
+    "official": ["off_1_1", "off_1_2", "off_1_5", "off_2_1", "off_2_2", "off_2_3", "off_2_4"],
+    "military": ["mil_2_1", "mil_2_2", "mil_2_3", "mil_2_4", "mil_2_5"],
+    "mixed": ["civ_1_2", "civ_2_1", "civ_2_2", "civ_2_3", "civ_2_4", "civ_2_5", "civ_3_1", "civ_3_2", "civ_3_3", "civ_3_5", "off_1_1", "off_2_1", "off_2_3"],
+    "urban": ["civ_2_2", "civ_2_3", "civ_2_5", "civ_3_1", "civ_3_2", "civ_2_4", "off_1_1", "off_1_2", "off_2_1", "off_2_2", "off_2_3", "off_2_4"]
+  },
+  "backdrops": {
+    "jungle": "countryside",
+    "building": "palace",
+    "crowd": "piazza",
+    "soldiers": "road",
+    "meeting": "chamber",
+    "leader": "palace",
+    "fire": "street",
+    "prison": "prison",
+    "mosque": "piazza",
+    "church": "piazza",
+    "exodus": "road"
+  }
+}

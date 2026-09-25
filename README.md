@@ -120,9 +120,14 @@ trigger manually from the Actions tab, optionally passing a specific
    word-level timestamps — used for burned-in captions and for timing
    which scene illustration is on screen, so the visuals track what's
    actually being said rather than looping one fixed animation.
-4. Renders crude line-drawn scene animations per beat with Pillow
-   (deliberately simple: flat outline shapes, no attempt at real
-   likenesses — see the `draw_*` functions and `SCENES` dict), then
+4. Renders animated scenes per beat with Pillow: procedural sky, hills,
+   buildings and trees, populated with illustrated character sprites from
+   `assets/characters/base/` (21 transparent PNGs made in Canva, cast by
+   role and by era — the script's `era` field picks early-1900s clothing
+   for older topics; faces vary per clip via a title-derived seed). The
+   sprites are single standing poses, so they bob and hop rather than
+   walk. If the assets folder is missing, the older drawn stick figures
+   are used instead. See the `draw_*` functions and `SCENES` dict. Then
    `ffmpeg` muxes frames + narration + burned SRT captions + a title card
    and outro card into the final 1080x1920 Reel.
 5. Writes the result to `queue/review_pending/`, **not**

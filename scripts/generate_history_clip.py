@@ -16,12 +16,16 @@ Pipeline:
    timing which crude scene illustration is on screen at any moment.
 4. Frames are drawn with Pillow: whichever scene is active at each video
    frame's timestamp gets rendered, so the visuals track what's being
-   said instead of showing one static image/character throughout.
+   said instead of showing one static image/character throughout. People
+   are pre-made illustrated sprites from assets/characters/base/, cast by
+   role (rural workers, officials, uniformed personnel, ...) and era, with
+   the faces varying per clip.
 5. ffmpeg muxes frames + narration audio + burned SRT captions + a title
    card and outro card into the final vertical Reel.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -102,9 +106,12 @@ likeness; fire = destruction/war damage, kept non-graphic; prison = \
 detention/oppression; mosque = Islamic religious context; church = \
 Christian religious context; exodus = displacement/refugees fleeing.)
 
+- Also pick one "era" for the illustrations' clothing: "early_1900s" if the \
+topic is set mostly before about 1930, otherwise "modern".
+
 Respond with ONLY a JSON object, no other text, in this exact shape:
-{{"title": "Short punchy title, no quotes", "beats": [{{"narration": "...", \
-"scene": "one_of_the_scene_tags"}}, ...]}}
+{{"title": "Short punchy title, no quotes", "era": "modern_or_early_1900s", \
+"beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
 """
 
 
@@ -115,7 +122,7 @@ def env(name: str) -> str:
     return value
 
 
-def generate_script(topic: str) -> tuple[str, list[dict]]:
+def generate_script(topic: str) -> tuple[str, str, list[dict]]:
     api_key = env("ANTHROPIC_API_KEY")
     prompt = HISTORY_PROMPT.format(topic=topic, scenes=", ".join(SCENE_VOCAB))
     resp = requests.post(
@@ -148,11 +155,12 @@ def generate_script(topic: str) -> tuple[str, list[dict]]:
 
     data = json.loads(text)
     title = data["title"].strip()
+    era = data.get("era") if data.get("era") in ("modern", "early_1900s") else "modern"
     beats = data["beats"]
     for beat in beats:
         if beat.get("scene") not in SCENE_VOCAB:
             beat["scene"] = "map"  # safe fallback for an unrecognized tag
-    return title, beats
+    return title, era, beats
 
 
 def synthesize_narration(full_text: str, voice_dir: Path, out_path: Path) -> None:
@@ -506,6 +514,73 @@ def _building(draw, cx, base_y, t, width=240, height=330, color=(150, 140, 130),
         draw.polygon([(cx, pole_top), (cx + 50 + flag_sway, pole_top + 15), (cx, pole_top + 30)], fill=(190, 70, 60))
 
 
+# --- Character cast (pre-made illustrated sprites) -----------------------
+# assets/characters/base/*.png are transparent, 1000px-tall standing
+# characters. Scenes pick people by ROLE so, e.g., soldiers scenes get the
+# uniformed characters and rural scenes get farmers -- and the pick is
+# seeded per clip (CAST["seed"]) so different clips show different faces.
+# If the asset folder is missing, _person() falls back to the drawn
+# stick figures so generation never breaks.
+
+CAST_DIR = REPO_ROOT / "assets" / "characters" / "base"
+
+ROLE_POOLS = {
+    "civilian": ["elder_man_vest", "woman_red_cardigan", "young_man_hoodie",
+                 "woman_yellow_blouse", "man_teal_polo"],
+    "rural": ["farmer_overalls", "woman_apron", "teen_boy_bag", "elder_woman_shawl"],
+    "official": ["man_navy_suit", "woman_blazer", "older_man_cream_suit", "clerk_vest_bowtie"],
+    "military": ["soldier_helmet", "woman_soldier_beret", "officer_peaked_cap", "recruit_bush_hat"],
+    "period": ["man_bowler_1910s", "woman_hat_dress_1910s", "boy_newsboy_cap", "man_tunic_robe"],
+}
+ROLE_POOLS["mixed"] = ROLE_POOLS["civilian"] + ROLE_POOLS["rural"] + ROLE_POOLS["official"]
+ROLE_POOLS["urban"] = ROLE_POOLS["civilian"] + ROLE_POOLS["official"]
+
+CAST = {"seed": 0, "era": "modern", "img": None, "sprites": None}
+_SPRITE_CACHE: dict = {}
+
+
+def _load_sprites() -> dict:
+    if CAST["sprites"] is None:
+        sprites = {}
+        if CAST_DIR.is_dir():
+            for f in sorted(CAST_DIR.glob("*.png")):
+                sprites[f.stem] = Image.open(f).convert("RGBA")
+        CAST["sprites"] = sprites
+    return CAST["sprites"]
+
+
+def _cast(role: str, n: int, salt: int = 0) -> list:
+    """n character names for a role, deterministic per clip seed. Early-1900s
+    clips swap civilian/rural/official roles for the period-dress pool."""
+    pool = list(ROLE_POOLS[role])
+    if CAST["era"] == "early_1900s" and role in ("civilian", "official", "rural", "mixed", "urban"):
+        pool = ROLE_POOLS["period"] + (ROLE_POOLS["rural"][:2] if role in ("rural", "mixed") else [])
+    rng = random.Random(CAST["seed"] * 1009 + salt)
+    rng.shuffle(pool)
+    return [pool[i % len(pool)] for i in range(n)]
+
+
+def _sprite(name: str, height: int, flip: bool):
+    key = (name, height, flip)
+    if key not in _SPRITE_CACHE:
+        base = _load_sprites()[name]
+        im = base.resize((max(1, int(base.width * height / base.height)), height), Image.LANCZOS)
+        _SPRITE_CACHE[key] = im.transpose(Image.FLIP_LEFT_RIGHT) if flip else im
+    return _SPRITE_CACHE[key]
+
+
+def _person(draw, name, x, foot_y, height, t, phase=0.0, flip=False, hop=0.0, seed=0):
+    """Draw one character standing with its feet at (x, foot_y), `height` px
+    tall, with a gentle idle bob (or a bigger walking hop when `hop` > 0)."""
+    height = int(height)
+    bob = math.sin(t * (7 if hop else 3.5) + phase) * (hop or 3)
+    if name in _load_sprites() and CAST["img"] is not None:
+        sp = _sprite(name, height, flip)
+        CAST["img"].paste(sp, (int(x - sp.width / 2), int(foot_y - sp.height - abs(bob))), sp)
+    else:
+        _stick_figure(draw, x, foot_y - abs(bob), t, phase=phase, seed=seed, scale=height / 169)
+
+
 # --- Scene palettes (sky top, sky horizon, ground, hills or None) --------
 
 def draw_jungle(draw, t, W, H):
@@ -515,40 +590,43 @@ def draw_jungle(draw, t, W, H):
         _tree(draw, W * xf, horizon + 60, t, phase=i, height=150 + 20 * (i % 2))
     for i, xf in enumerate([0.42, 0.5, 0.58]):
         _tree(draw, W * xf, horizon + 130, t, phase=i + 2, height=110)
-    _stick_figure(draw, W * 0.42, horizon + 150, t, phase=0, seed=0, robe=True, prop="staff")
-    _stick_figure(draw, W * 0.56, horizon + 150, t, phase=1.2, seed=3, hat="cap", prop="bag")
+    people = _cast("rural", 3, salt=1)
+    for i, (xf, h) in enumerate([(0.3, 400), (0.7, 400), (0.5, 470)]):
+        _person(draw, people[i], W * xf, horizon + 260, h, t, phase=i * 1.7, flip=(i == 1), seed=i)
 
 
 def draw_building(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (150, 190, 225), (220, 225, 220), (95, 95, 100), sun=True)
-    _building(draw, W * 0.22, horizon + 40, t, width=140, height=200)
-    _building(draw, W * 0.82, horizon + 40, t, width=150, height=230)
-    _building(draw, W * 0.5, horizon + 60, t, width=280, height=340, flag=True)
-    hats = ["cap", None, "cap", None]
-    props = [None, "bag", "book", None]
-    for i, xf in enumerate([0.15, 0.35, 0.65, 0.85]):
-        _stick_figure(draw, W * xf, horizon + 60, t, phase=i, seed=i, scale=0.55, hat=hats[i], prop=props[i])
+    _building(draw, W * 0.14, horizon + 40, t, width=260, height=400)
+    _building(draw, W * 0.86, horizon + 40, t, width=280, height=440)
+    _building(draw, W * 0.5, horizon + 60, t, width=460, height=620, flag=True)
+    names = _cast("urban", 4, salt=2)  # one combined pick, so nobody appears twice
+    lineup = [(0.2, names[0], False), (0.4, names[1], False),
+              (0.62, names[2], True), (0.82, names[3], True)]
+    for i, (xf, name, flip) in enumerate(lineup):
+        _person(draw, name, W * xf, horizon + 250, 430, t, phase=i * 1.3, flip=flip, seed=i)
 
 
 def draw_crowd(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (140, 175, 215), (230, 210, 180), (110, 100, 90), sun=True)
-    _building(draw, W * 0.5, horizon + 20, t, width=220, height=260)
-    rows = [(horizon + 90, 0.9), (horizon + 150, 1.0)]
-    positions = [0.12, 0.24, 0.36, 0.48, 0.6, 0.72, 0.84]
-    props = ["banner", None, "bag", None, "banner", None, "bag"]
-    for row_i, (row_y, scale) in enumerate(rows):
-        for i, xf in enumerate(positions):
-            arms_up = (i + row_i) % 2 == 0
-            prop = None if arms_up else props[i]
-            _stick_figure(draw, W * xf + (20 if row_i else 0), row_y, t, phase=i * 0.6 + row_i,
-                          seed=i + row_i * 3, scale=scale, arms_up=arms_up, prop=prop)
+    _building(draw, W * 0.5, horizon + 20, t, width=400, height=480)
+    back = _cast("mixed", 7, salt=4)
+    front = _cast("mixed", 5, salt=5)
+    for i, xf in enumerate([0.1, 0.23, 0.36, 0.5, 0.63, 0.76, 0.9]):
+        _person(draw, back[i], W * xf, horizon + 170, 330, t, phase=i * 0.9, flip=(i % 2 == 0), seed=i)
+    for i, xf in enumerate([0.18, 0.34, 0.5, 0.66, 0.82]):
+        _person(draw, front[i], W * xf, horizon + 270, 450, t, phase=i * 1.1 + 2, flip=(i % 2 == 1), seed=i + 3)
 
 
 def draw_soldiers(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (140, 130, 130), (200, 170, 140), (90, 80, 65), hills_color=(60, 55, 55))
-    _building(draw, W * 0.15, horizon + 20, t, width=120, height=160, color=(180, 170, 165))
-    for i, xf in enumerate([0.28, 0.42, 0.56, 0.7, 0.84]):
-        _stick_figure(draw, W * xf, horizon + 130, t, phase=i, scale=0.9, hat="helmet", prop="rifle")
+    _building(draw, W * 0.13, horizon + 20, t, width=240, height=300, color=(180, 170, 165))
+    back = _cast("military", 3, salt=6)
+    front = _cast("military", 4, salt=7)
+    for i, xf in enumerate([0.3, 0.5, 0.7]):
+        _person(draw, back[i], W * xf, horizon + 170, 330, t, phase=i * 1.4, flip=(i % 2 == 1), seed=i)
+    for i, xf in enumerate([0.16, 0.39, 0.62, 0.85]):
+        _person(draw, front[i], W * xf, horizon + 270, 450, t, phase=i * 0.8, flip=(i % 2 == 0), seed=i + 4)
 
 
 def draw_map(draw, t, W, H):
@@ -586,42 +664,38 @@ def draw_meeting(draw, t, W, H):
     wx0, wy0, wx1, wy1 = W * 0.68, H * 0.18, W * 0.92, H * 0.4
     draw.rectangle([wx0, wy0, wx1, wy1], outline=LINE, width=3)
     draw.line([((wx0 + wx1) / 2, wy0), ((wx0 + wx1) / 2, wy1)], fill=LINE, width=2)
-    tx0, ty, tx1 = W * 0.2, floor_y - 90, W * 0.8
-    draw.line([(tx0, ty), (tx1, ty)], fill=LINE, width=5)
-    draw.line([(tx0 + 10, ty), (tx0 + 10, ty + 70)], fill=LINE, width=4)
-    draw.line([(tx1 - 10, ty), (tx1 - 10, ty + 70)], fill=LINE, width=4)
-    props = [None, "book", "book", None]
-    for i, xf in enumerate([0.3, 0.42, 0.58, 0.7]):
-        _stick_figure(draw, W * xf, ty, t, phase=i * 0.9, seed=i, scale=0.55, prop=props[i])
+    tx0, tx1 = W * 0.17, W * 0.83
+    foot_y = floor_y + 70
+    people = _cast("official", 4, salt=8)
+    h = 480
+    for i, xf in enumerate([0.27, 0.42, 0.58, 0.73]):
+        _person(draw, people[i], W * xf, foot_y, h, t, phase=i * 0.9, flip=(i >= 2), seed=i)
+    # The table is drawn over their lower bodies so they read as seated.
+    top = foot_y - h * 0.42
+    draw.rectangle([tx0, top, tx1, top + 26], fill=(150, 105, 65))
+    draw.rectangle([tx0 + 12, top + 26, tx1 - 12, foot_y + 30], fill=(105, 70, 42))
+    for px in (0.36, 0.5, 0.64):
+        draw.rectangle([W * px - 40, top - 8, W * px + 40, top + 4], fill=(235, 230, 215))
 
 
 def draw_leader(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (90, 60, 70), (200, 110, 70), (55, 40, 40), sun=True,
                              sun_color=(230, 120, 90))
-    for i, xf in enumerate([0.15, 0.3, 0.68, 0.85]):
-        _stick_figure(draw, W * xf, horizon + 140, t, phase=i * 1.3, seed=i + 1, scale=0.5, arms_up=(i % 2 == 0))
+    audience = _cast("mixed", 6, salt=9)
+    for i, xf in enumerate([0.1, 0.24, 0.37, 0.63, 0.76, 0.9]):
+        _person(draw, audience[i], W * xf, horizon + 190, 300, t, phase=i * 1.3, flip=(xf > 0.5), seed=i + 1)
     cx = W / 2
-    bob = math.sin(t * 1.5) * 4
-    ped_y = horizon + 150
-    draw.rectangle([cx - 90, ped_y - 40, cx + 90, ped_y], fill=(120, 110, 100))
-    draw.rectangle([cx, ped_y - 40, cx + 90, ped_y], fill=_shade((120, 110, 100)))
-    foot_y = ped_y - 40
-    r = 55
-    head_cy = foot_y - 210 + bob
-    skin = SKIN_TONES[2]
-    robe_color = (120, 45, 55)
-    draw.rectangle([cx - 85, head_cy + r, cx + 85, foot_y], fill=robe_color)
-    draw.rectangle([cx, head_cy + r, cx + 85, foot_y], fill=_shade(robe_color))
-    draw.ellipse([cx - r, head_cy - r, cx + r, head_cy + r], fill=skin)
-    draw.ellipse([cx + r * 0.15, head_cy - r, cx + r, head_cy + r], fill=_shade(skin, 0.88))
-    draw.pieslice([cx - r - 3, head_cy - r - 6, cx + r + 3, head_cy + r * 0.7], 180, 360, fill=HAIR_COLORS[2])
-    # simple gold sash, suggesting ceremonial dress without any specific likeness
-    draw.line([(cx - 70, head_cy + r + 10), (cx + 40, foot_y - 15)], fill=(210, 175, 90), width=6)
+    ped_top = horizon + 230
+    draw.rectangle([cx - 140, ped_top - 20, cx + 140, ped_top + 70], fill=(120, 110, 100))
+    draw.rectangle([cx, ped_top - 20, cx + 140, ped_top + 70], fill=_shade((120, 110, 100)))
+    # Generic authority figure -- deliberately not a specific likeness.
+    leader = _cast("official", 1, salt=10)[0]
+    _person(draw, leader, cx, ped_top - 20, 560, t, phase=0, seed=2)
 
 
 def draw_fire(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (60, 30, 30), (120, 50, 35), (40, 30, 28))
-    bx0, by0, bx1 = W * 0.3, horizon - 10, W * 0.7
+    bx0, by0, bx1 = W * 0.3, horizon - 190, W * 0.7
     by1 = horizon + 140
     draw.rectangle([bx0, by0, bx1, by1], fill=(70, 55, 50))
     draw.rectangle([(bx0 + bx1) / 2, by0, bx1, by1], fill=_shade((70, 55, 50)))
@@ -643,62 +717,84 @@ def draw_fire(draw, t, W, H):
         smoke_alpha_gray = 120 + int(40 * (1 - ((t * 30 + i * 40) % 200) / 200))
         draw.ellipse([smoke_x - 12, smoke_y - 12, smoke_x + 12, smoke_y + 12],
                      outline=(smoke_alpha_gray,) * 3, width=2)
-    _stick_figure(draw, W * 0.18, horizon + 130, t, phase=0, seed=1, scale=0.6)
+    onlookers = _cast("civilian", 2, salt=11)
+    _person(draw, onlookers[0], W * 0.16, horizon + 270, 400, t, phase=0, seed=1)
+    _person(draw, onlookers[1], W * 0.84, horizon + 270, 400, t, phase=2, flip=True, seed=3)
 
 
 def draw_prison(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (90, 95, 100), (150, 150, 145), (70, 68, 65))
-    bx0, by0, bx1, by1 = W * 0.28, horizon - 60, W * 0.72, horizon + 150
+    bx0, by0, bx1, by1 = W * 0.26, horizon - 210, W * 0.74, horizon + 230
     draw.rectangle([bx0, by0, bx1, by1], fill=(110, 108, 100))
     draw.rectangle([(bx0 + bx1) / 2, by0, bx1, by1], fill=_shade((110, 108, 100)))
-    for i in range(7):
-        bx = bx0 + (bx1 - bx0) * i / 6
-        draw.line([(bx, by0 - 15), (bx, by1 + 15)], fill=(35, 32, 30), width=4)
-    draw.rectangle([bx0 - 60, by0 + 20, bx0 - 20, by1], fill=(90, 88, 82))  # watchtower
-    _stick_figure(draw, (bx0 + bx1) / 2, by1 - 10, t, scale=0.6)
+    draw.rectangle([bx0 + 30, by0 + 40, bx1 - 30, by1 - 20], fill=(45, 42, 40))  # dark cell interior
+    prisoner = _cast("civilian", 1, salt=12)[0]
+    _person(draw, prisoner, (bx0 + bx1) / 2, by1 - 20, 340, t, phase=0, seed=1)
+    for i in range(8):
+        bx = bx0 + 30 + (bx1 - bx0 - 60) * i / 7
+        draw.line([(bx, by0 + 40), (bx, by1 - 20)], fill=(30, 28, 26), width=8)
+    draw.rectangle([bx0 - 110, by0 + 60, bx0 - 30, by1], fill=(90, 88, 82))  # watchtower
 
 
 def draw_mosque(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (110, 165, 215), (250, 210, 150), (190, 165, 110), sun=True)
-    cx, base_y = W / 2, horizon + 150
+    s = 1.9  # scale the building up so people stand at a believable size beside it
+    cx, base_y = W / 2, horizon + 200
     wall = (225, 205, 165)
-    draw.rectangle([cx - 100, base_y - 150, cx + 100, base_y], fill=wall)
-    draw.rectangle([cx, base_y - 150, cx + 100, base_y], fill=_shade(wall))
-    draw.pieslice([cx - 100, base_y - 250, cx + 100, base_y - 130], 180, 360, fill=(190, 150, 80))
-    draw.line([(cx, base_y - 250), (cx, base_y - 290)], fill=(140, 110, 60), width=3)
-    draw.pieslice([cx - 12, base_y - 305, cx + 12, base_y - 281], 200, 520, fill=(190, 150, 80))
-    for mx in [cx - 150, cx + 150]:
-        draw.rectangle([mx - 10, base_y - 220, mx + 10, base_y], fill=wall)
-        draw.ellipse([mx - 15, base_y - 245, mx + 15, base_y - 215], fill=(190, 150, 80))
-    for wy in [base_y - 110, base_y - 60]:
-        draw.rectangle([cx - 20, wy, cx + 20, wy + 35], fill=(150, 115, 70))
-    _tree(draw, cx - 220, base_y + 20, t, height=90, phase=0.5)
+    gold = (190, 150, 80)
+    top = base_y - 150 * s
+    draw.rectangle([cx - 100 * s, top, cx + 100 * s, base_y], fill=wall)
+    draw.rectangle([cx, top, cx + 100 * s, base_y], fill=_shade(wall))
+    draw.pieslice([cx - 90 * s, top - 90 * s, cx + 90 * s, top + 90 * s], 180, 360, fill=gold)  # dome sits on the wall
+    draw.line([(cx, top - 90 * s), (cx, top - 125 * s)], fill=(140, 110, 60), width=4)
+    draw.pieslice([cx - 12 * s, top - 145 * s, cx + 12 * s, top - 121 * s], 200, 520, fill=gold)
+    for mx in [cx - 150 * s, cx + 150 * s]:
+        draw.rectangle([mx - 10 * s, base_y - 220 * s, mx + 10 * s, base_y], fill=wall)
+        draw.polygon([(mx - 13 * s, base_y - 220 * s), (mx + 13 * s, base_y - 220 * s), (mx, base_y - 255 * s)], fill=gold)
+    for wy in [base_y - 110 * s, base_y - 60 * s]:
+        draw.rectangle([cx - 20 * s, wy, cx + 20 * s, wy + 35 * s], fill=(150, 115, 70))
+    people = _cast("civilian", 3, salt=13)
+    for i, (xf, flip) in enumerate([(0.17, False), (0.83, True), (0.68, True)]):
+        _person(draw, people[i], W * xf, horizon + 290, 380, t, phase=i * 1.5, flip=flip, seed=i)
 
 
 def draw_church(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (130, 170, 210), (210, 210, 200), (70, 95, 60), hills_color=(45, 70, 40))
-    cx, base_y = W / 2, horizon + 150
+    s = 1.9
+    cx, base_y = W / 2, horizon + 200
     wall = (200, 190, 175)
-    draw.rectangle([cx - 90, base_y - 150, cx + 90, base_y], fill=wall)
-    draw.rectangle([cx, base_y - 150, cx + 90, base_y], fill=_shade(wall))
-    draw.polygon([(cx - 20, base_y - 270), (cx + 20, base_y - 270), (cx, base_y - 340)], fill=(110, 60, 55))
-    draw.line([(cx, base_y - 340), (cx, base_y - 380)], fill=(70, 60, 55), width=3)
-    draw.line([(cx - 15, base_y - 365), (cx + 15, base_y - 365)], fill=(70, 60, 55), width=3)
-    for wy in [base_y - 110, base_y - 60]:
-        draw.rectangle([cx - 18, wy, cx + 18, wy + 32], fill=(120, 150, 190))
-    for i in range(4):
-        fx = cx - 200 + i * 40
-        draw.line([(fx, base_y), (fx, base_y - 30)], fill=(90, 90, 85), width=3)  # simple fence
+    draw.rectangle([cx - 90 * s, base_y - 150 * s, cx + 90 * s, base_y], fill=wall)
+    draw.rectangle([cx, base_y - 150 * s, cx + 90 * s, base_y], fill=_shade(wall))
+    draw.rectangle([cx - 28 * s, base_y - 270 * s, cx + 28 * s, base_y - 150 * s], fill=wall)  # bell tower
+    draw.rectangle([cx, base_y - 270 * s, cx + 28 * s, base_y - 150 * s], fill=_shade(wall))
+    draw.rectangle([cx - 8 * s, base_y - 250 * s, cx + 8 * s, base_y - 215 * s], fill=(70, 60, 55))
+    draw.polygon([(cx - 34 * s, base_y - 270 * s), (cx + 34 * s, base_y - 270 * s), (cx, base_y - 350 * s)],
+                 fill=(110, 60, 55))
+    draw.line([(cx, base_y - 350 * s), (cx, base_y - 385 * s)], fill=(70, 60, 55), width=4)
+    draw.line([(cx - 15 * s, base_y - 370 * s), (cx + 15 * s, base_y - 370 * s)], fill=(70, 60, 55), width=4)
+    for wy in [base_y - 110 * s, base_y - 60 * s]:
+        draw.rectangle([cx - 18 * s, wy, cx + 18 * s, wy + 32 * s], fill=(120, 150, 190))
+    for i in range(5):
+        fx = W * 0.08 + i * 40
+        draw.line([(fx, base_y), (fx, base_y - 40)], fill=(90, 90, 85), width=4)  # simple fence
+    people = _cast("civilian", 3, salt=14)
+    for i, (xf, flip) in enumerate([(0.17, False), (0.83, True), (0.68, True)]):
+        _person(draw, people[i], W * xf, horizon + 290, 380, t, phase=i * 1.5, flip=flip, seed=i)
 
 
 def draw_exodus(draw, t, W, H):
     horizon = draw_backdrop(draw, W, H, (110, 100, 100), (170, 140, 110), (95, 80, 65), hills_color=(65, 55, 50))
     draw.polygon([(W * 0.3, horizon - 20), (W * 0.4, horizon - 90), (W * 0.55, horizon - 20)],
                  outline=(80, 70, 65), width=3)  # distant damaged silhouette, far and small
-    y = horizon + 140
-    for i in range(6):
-        x = ((t * 55 + i * 90) % (W + 150)) - 75
-        _stick_figure(draw, x, y, t, phase=i * 0.5, seed=i + 2, scale=0.65, robe=(i % 2 == 0), prop="bag")
+    walkers = _cast("mixed", 7, salt=15)
+    n = 7
+    span = W + 300
+    for i in range(n):
+        x = ((t * 55 + i * (span / n)) % span) - 150
+        # A steady walking hop; smaller/further ones sit higher up the road.
+        far = i % 2 == 0
+        _person(draw, walkers[i], x, horizon + (220 if far else 270), 300 if far else 380, t,
+                phase=i * 0.7, hop=9, seed=i + 2)
 
 
 SCENES = {
@@ -744,6 +840,7 @@ def render_frames(beats: list[dict], duration: float, frames_dir: Path) -> None:
 
         img = Image.new("RGB", (big_W, big_H), (35, 10, 10))
         draw = ImageDraw.Draw(img)
+        CAST["img"] = img  # lets scenes paste character sprites onto this frame
         scene_fn(draw, t, big_W, big_H)
 
         b_start, b_end = active_beat["start"], active_beat["end"]
@@ -758,7 +855,7 @@ def render_frames(beats: list[dict], duration: float, frames_dir: Path) -> None:
         # near the edges of a scene (borders, distant buildings) never
         # get cropped out.
         offset_x = max_offset_x * (0.5 + (corner_x - 0.5) * 0.6 * progress)
-        offset_y = max_offset_y * (0.5 + (corner_y - 0.5) * 0.6 * progress)
+        offset_y = max_offset_y * (0.72 + (corner_y - 0.5) * 0.4 * progress)  # biased down: content sits higher, clear of the captions
         crop_box = (offset_x, offset_y, offset_x + VIDEO_WIDTH, offset_y + VIDEO_HEIGHT)
         img = img.crop(crop_box)
 
@@ -842,7 +939,9 @@ def main() -> int:
     topic = os.environ.get("HISTORY_TOPIC") or random.choice(HISTORY_TOPICS)
     print(f"Topic: {topic}")
 
-    title, beats = generate_script(topic)
+    title, era, beats = generate_script(topic)
+    CAST["era"] = era
+    CAST["seed"] = int(hashlib.md5(title.encode("utf-8")).hexdigest()[:8], 16)
     print(f"Generated: {title} ({len(beats)} beats)")
 
     with tempfile.TemporaryDirectory() as tmp:

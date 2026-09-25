@@ -130,6 +130,16 @@ trigger manually from the Actions tab, optionally passing a specific
    are used instead. See the `draw_*` functions and `SCENES` dict. Then
    `ffmpeg` muxes frames + narration + burned SRT captions + a title card
    and outro card into the final 1080x1920 Reel.
+   **Maps and flags** come from data, not from a model drawing them. Map
+   beats carry ISO country codes and are drawn from Natural Earth
+   outlines (`assets/geo/`, public domain) with a slow zoom, highlights,
+   labels, and a "Present-day borders" tag; building/meeting/leader beats
+   may show a national flag from `assets/flags/` (271 PNGs rendered from
+   the MIT-licensed `flag-icons` project, license kept alongside). Codes
+   the model invents are dropped at parse time. Because borders and flags
+   are present-day, the prompt tells the model to leave `flag` unset when
+   the period's state used a different flag (e.g. Khmer Rouge-era
+   Cambodia), and everything still goes through the review step.
 5. Writes the result to `queue/review_pending/`, **not**
    `queue/pending/`.
 

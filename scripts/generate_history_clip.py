@@ -25,6 +25,7 @@ Pipeline:
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import math
@@ -38,7 +39,8 @@ import wave
 from pathlib import Path
 
 import requests
-from PIL import Image, ImageDraw
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REVIEW_DIR = REPO_ROOT / "queue" / "review_pending"
@@ -108,10 +110,23 @@ Christian religious context; exodus = displacement/refugees fleeing.)
 
 - Also pick one "era" for the illustrations' clothing: "early_1900s" if the \
 topic is set mostly before about 1930, otherwise "modern".
+- For a beat whose scene is "map", also add "places": a list of 1-4 ISO 3166-1 \
+alpha-2 codes (e.g. "KH") for the PRESENT-DAY countries the beat is about, main \
+one first. The map shows present-day borders, so use today's countries even if \
+the period had different ones (e.g. for the former Yugoslavia, list the \
+successor countries).
+- For a beat whose scene is "building", "meeting" or "leader", you may add \
+"flag": a lowercase ISO alpha-2 code, but ONLY if you are confident that \
+country used essentially the same national flag as today's during the period \
+discussed. Do NOT set it for regimes or eras with a different flag (e.g. \
+Cambodia under the Khmer Rouge, Nazi Germany, the Soviet Union, or Bosnia \
+before 1998). When unsure, omit "flag". Never add "flag" to other scenes.
 
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {{"title": "Short punchy title, no quotes", "era": "modern_or_early_1900s", \
 "beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
+(map beats may also carry "places": ["XX"]; building/meeting/leader beats may \
+also carry "flag": "xx" under the rules above.)
 """
 
 
@@ -160,6 +175,12 @@ def generate_script(topic: str) -> tuple[str, str, list[dict]]:
     for beat in beats:
         if beat.get("scene") not in SCENE_VOCAB:
             beat["scene"] = "map"  # safe fallback for an unrecognized tag
+        # Codes are validated against the real data files; anything the
+        # model invented is silently dropped rather than drawn.
+        raw_places = beat.get("places") if beat["scene"] == "map" else None
+        beat["places"] = [c.upper() for c in (raw_places or []) if valid_place(c)][:4]
+        flag = beat.get("flag") if beat["scene"] in ("building", "meeting", "leader") else None
+        beat["flag"] = flag.lower() if valid_flag(flag) else None
     return title, era, beats
 
 
@@ -508,10 +529,15 @@ def _building(draw, cx, base_y, t, width=240, height=330, color=(150, 140, 130),
 
     draw.polygon([(bx0 - 20, by0), (bx1 + 20, by0), (cx, by0 - width * 0.3)], fill=_shade(color, 0.55))
     if flag:
-        flag_sway = math.sin(t * 3) * 8
-        pole_top = by0 - width * 0.3 - 80
-        draw.line([(cx, by0 - width * 0.3), (cx, pole_top)], fill=(210, 200, 190), width=3)
-        draw.polygon([(cx, pole_top), (cx + 50 + flag_sway, pole_top + 15), (cx, pole_top + 30)], fill=(190, 70, 60))
+        real = SCENE_CTX["flag"] if valid_flag(SCENE_CTX["flag"]) else None
+        pole_top = by0 - width * 0.3 - (170 if real else 80)
+        draw.line([(cx, by0 - width * 0.3), (cx, pole_top)], fill=(210, 200, 190), width=4)
+        if real:
+            _paste_flag(real, cx, pole_top, 190, t)
+        else:
+            flag_sway = math.sin(t * 3) * 8
+            draw.polygon([(cx, pole_top), (cx + 50 + flag_sway, pole_top + 15), (cx, pole_top + 30)],
+                         fill=(190, 70, 60))
 
 
 # --- Character cast (pre-made illustrated sprites) -----------------------
@@ -629,31 +655,192 @@ def draw_soldiers(draw, t, W, H):
         _person(draw, front[i], W * xf, horizon + 270, 450, t, phase=i * 0.8, flip=(i % 2 == 0), seed=i + 4)
 
 
+# --- Real maps (Natural Earth, public domain) and real flags (flag-icons, MIT)
+# assets/geo/countries.json.gz holds present-day country outlines;
+# assets/flags/<iso2>.png holds present-day national flags. The script
+# names places/flags by ISO code, so borders and flags come from data,
+# never from a model drawing them.
+
+GEO_PATH = REPO_ROOT / "assets" / "geo" / "countries.json.gz"
+FLAG_DIR = REPO_ROOT / "assets" / "flags"
+
+# Per-beat context, set by render_frames before each scene is drawn.
+SCENE_CTX = {"places": [], "flag": None, "progress": 0.0}
+_GEO = {"countries": None}
+_FLAG_CACHE: dict = {}
+
+
+def _geo() -> dict:
+    """iso2 -> {name, polys:[(bbox, area, ndarray)]} (outer rings only)."""
+    if _GEO["countries"] is None:
+        countries: dict = {}
+        if GEO_PATH.is_file():
+            with gzip.open(GEO_PATH, "rt", encoding="utf-8") as fh:
+                for c in json.load(fh):
+                    polys = []
+                    for poly in c["p"]:
+                        ring = np.array(poly[0], dtype=float)
+                        if len(ring) < 3:
+                            continue
+                        x, y = ring[:, 0], ring[:, 1]
+                        area = abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1))) / 2
+                        polys.append(((x.min(), y.min(), x.max(), y.max()), area, ring))
+                    countries[c["i"]] = {"name": c["n"], "polys": polys}
+        _GEO["countries"] = countries
+    return _GEO["countries"]
+
+
+def valid_place(code) -> bool:
+    return isinstance(code, str) and code.upper() in _geo()
+
+
+def valid_flag(code) -> bool:
+    return isinstance(code, str) and code.isalpha() and (FLAG_DIR / f"{code.lower()}.png").is_file()
+
+
+def _main_bbox(code: str):
+    """Bounding box of a country's main landmass(es), ignoring far-flung
+    islands/exclaves (e.g. Alaska, overseas territories) so the view frames
+    the country people actually mean."""
+    polys = _geo()[code]["polys"]
+    biggest = max(p[1] for p in polys)
+    keep = [p for p in polys if p[1] >= 0.35 * biggest]
+    return (min(p[0][0] for p in keep), min(p[0][1] for p in keep),
+            max(p[0][2] for p in keep), max(p[0][3] for p in keep))
+
+
+def _flag_image(code: str, width: int):
+    key = (code.lower(), width)
+    if key not in _FLAG_CACHE:
+        im = Image.open(FLAG_DIR / f"{code.lower()}.png").convert("RGBA")
+        _FLAG_CACHE[key] = im.resize((width, int(im.height * width / im.width)), Image.LANCZOS)
+    return _FLAG_CACHE[key]
+
+
+def _paste_flag(code: str, x: float, y: float, width: int, t: float, wave: float = 6.0):
+    """Paste a flag with its hoist edge at (x, y), rippling in strips."""
+    img = CAST["img"]
+    if img is None or not valid_flag(code):
+        return False
+    fl = _flag_image(code, width)
+    strip = 6
+    for sx in range(0, fl.width, strip):
+        dy = math.sin(t * 4 + sx / 22.0) * wave * (sx / fl.width)
+        piece = fl.crop((sx, 0, min(sx + strip, fl.width), fl.height))
+        img.paste(piece, (int(x + sx), int(y + dy)), piece)
+    return True
+
+
+def _smoothstep(v: float) -> float:
+    v = min(max(v, 0.0), 1.0)
+    return v * v * (3 - 2 * v)
+
+
 def draw_map(draw, t, W, H):
-    # Parchment backdrop rather than sky -- reads as "a map", not "a place".
-    draw.rectangle([0, 0, W, H], fill=(60, 45, 25))
-    # Margins sized per-axis to comfortably survive the Ken Burns pan in
-    # render_frames, so the border/compass never get cropped out of frame.
-    mx, my = W * (ZOOM_MARGIN + 0.06), H * (ZOOM_MARGIN + 0.06)
-    draw.rectangle([mx, my, W - mx, H - my], outline=LINE, width=4)
-    for i in range(4):
-        yy = my + 40 + i * 30
-        draw.line([(mx + 20, yy), (mx + 20, yy)], fill=LINE, width=1)
-    cx, cy = W / 2, H * 0.48
-    pts = []
-    for i in range(10):
-        ang = i / 10 * 2 * math.pi
-        rad = 190 + 22 * math.sin(ang * 3 + t * 0.5)
-        pts.append((cx + rad * math.cos(ang), cy + rad * 0.75 * math.sin(ang)))
-    draw.polygon(pts, fill=(195, 160, 95), outline=LINE, width=4)
-    dash_phase = int(t * 4) % 2
-    draw.line([(cx, cy - 160), (cx, cy + 160)], fill=(150, 60, 55), width=(4 if dash_phase else 2))
-    draw.ellipse([cx - 9, cy - 9, cx + 9, cy + 9], fill=(150, 60, 55))
-    # small compass rose, bottom-right, for map flavor
-    rcx, rcy, rr = W - mx - 70, H - my - 70, 40
-    draw.ellipse([rcx - rr, rcy - rr, rcx + rr, rcy + rr], outline=LINE, width=2)
-    draw.line([(rcx, rcy - rr), (rcx, rcy + rr)], fill=LINE, width=2)
-    draw.line([(rcx - rr, rcy), (rcx + rr, rcy)], fill=LINE, width=2)
+    OCEAN, LAND, BORDER = (58, 104, 150), (222, 210, 176), (150, 134, 104)
+    HILITE, HILITE_EDGE = (200, 78, 60), (255, 236, 200)
+    draw.rectangle([0, 0, W, H], fill=OCEAN)
+    countries = _geo()
+    places = [p for p in SCENE_CTX["places"] if p in countries]
+
+    if places:
+        boxes = [_main_bbox(p) for p in places]
+        lon_min, lat_min = min(b[0] for b in boxes), min(b[1] for b in boxes)
+        lon_max, lat_max = max(b[2] for b in boxes), max(b[3] for b in boxes)
+        lon0, lat0 = (lon_min + lon_max) / 2, (lat_min + lat_max) / 2
+        span_lon, span_lat = max(lon_max - lon_min, 6.0), max(lat_max - lat_min, 6.0)
+        pad = 2.6 - 1.2 * _smoothstep(SCENE_CTX["progress"])  # slow zoom-in over the beat
+    else:
+        lon0, lat0, span_lon, span_lat, pad = 10.0, 15.0, 360.0, 150.0, 1.0
+    cos0 = max(math.cos(math.radians(lat0)), 0.2)
+    scale = min(W / (span_lon * pad * cos0), H * 0.9 / (span_lat * pad))
+    cx, cy = W / 2, H * 0.45
+
+    half_lon = (W / 2) / (scale * cos0) + 2
+    half_lat = (H * 0.6) / scale + 2
+    shifts = [0.0] + ([360.0] if lon0 > 90 else []) + ([-360.0] if lon0 < -90 else [])
+
+    def project(ring, shift):
+        px = cx + (ring[:, 0] + shift - lon0) * cos0 * scale
+        py = cy + (lat0 - ring[:, 1]) * scale
+        return list(zip(px.tolist(), py.tolist()))
+
+    # faint graticule for a map-like feel
+    step = 5 if span_lon * pad < 60 else 15
+    g0 = int((lon0 - half_lon) // step) * step
+    for gl in range(g0, int(lon0 + half_lon) + step, step):
+        x = cx + (gl - lon0) * cos0 * scale
+        draw.line([(x, 0), (x, H)], fill=(70, 118, 164), width=1)
+    l0 = int((lat0 - half_lat) // step) * step
+    for gl in range(l0, int(lat0 + half_lat) + step, step):
+        y = cy + (lat0 - gl) * scale
+        draw.line([(0, y), (W, y)], fill=(70, 118, 164), width=1)
+
+    drawn = []
+    for code, c in countries.items():
+        for bbox, area, ring in c["polys"]:
+            for sh in shifts:
+                if (bbox[2] + sh < lon0 - half_lon or bbox[0] + sh > lon0 + half_lon
+                        or bbox[3] < lat0 - half_lat or bbox[1] > lat0 + half_lat):
+                    continue
+                drawn.append((area, code, ring, sh))
+    drawn.sort(key=lambda d: -d[0])  # big first so enclaves stay visible on top
+    for area, code, ring, sh in drawn:
+        pts = project(ring, sh)
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        if max(xs) - min(xs) < 2 and max(ys) - min(ys) < 2:
+            continue
+        hi = code in places
+        draw.polygon(pts, fill=HILITE if hi else LAND, outline=HILITE_EDGE if hi else BORDER,
+                     width=4 if hi else 2)
+
+    try:
+        font = ImageFont.truetype(FONT_PATH, 44)
+        small = ImageFont.truetype(FONT_PATH, 30)
+    except OSError:
+        font = small = ImageFont.load_default()
+
+    label_pts = []
+    for n, code in enumerate(places):
+        b = _main_bbox(code)
+        lx = cx + ((b[0] + b[2]) / 2 - lon0) * cos0 * scale
+        ly = cy + (lat0 - (b[1] + b[3]) / 2) * scale
+        label_pts.append((lx, ly))
+        r = 16 + 8 * (0.5 + 0.5 * math.sin(t * 4))
+        draw.ellipse([lx - r, ly - r, lx + r, ly + r], outline=HILITE_EDGE, width=4)
+        draw.ellipse([lx - 7, ly - 7, lx + 7, ly + 7], fill=HILITE_EDGE)
+        # With several places, alternate labels above/below their markers
+        # and shrink them a little so neighbours' names don't pile up.
+        f = font if len(places) == 1 else small
+        dy = -46 if n % 2 == 0 else 78
+        draw.text((lx, ly + dy), countries[code]["name"], font=f, fill=(255, 255, 255),
+                  anchor="ms", stroke_width=5, stroke_fill=(30, 30, 30))
+
+    # Neighbours: label the larger ones that are on screen, so the view has context.
+    for code, c in countries.items():
+        if code in places:
+            continue
+        big = max(c["polys"], key=lambda p: p[1])
+        bx = (big[0][0] + big[0][2]) / 2
+        by = (big[0][1] + big[0][3]) / 2
+        px = cx + (bx - lon0) * cos0 * scale
+        py = cy + (lat0 - by) * scale
+        wpx = (big[0][2] - big[0][0]) * cos0 * scale
+        crowded = any((px - qx) ** 2 + (py - qy) ** 2 < 230 ** 2 for qx, qy in label_pts)
+        if (0.08 * W < px < 0.92 * W and 0.08 * H < py < 0.62 * H and wpx > 190 and not crowded):
+            draw.text((px, py), c["name"], font=small, fill=(60, 50, 35), anchor="mm",
+                      stroke_width=3, stroke_fill=(232, 222, 190))
+
+    draw.text((W / 2, H * 0.72), "Present-day borders", font=small, fill=(255, 255, 255),
+              anchor="mm", stroke_width=4, stroke_fill=(30, 30, 30))
+
+    flag = SCENE_CTX["flag"]
+    if flag and valid_flag(flag):
+        fl = _flag_image(flag, 340)
+        x0, y0 = int(W / 2 - fl.width / 2), int(H * 0.08 + 250)
+        draw.rectangle([x0 - 8, y0 - 8, x0 + fl.width + 8, y0 + fl.height + 8], fill=(250, 250, 245))
+        CAST["img"].paste(fl, (x0, y0), fl)
 
 
 def draw_meeting(draw, t, W, H):
@@ -664,6 +851,10 @@ def draw_meeting(draw, t, W, H):
     wx0, wy0, wx1, wy1 = W * 0.68, H * 0.18, W * 0.92, H * 0.4
     draw.rectangle([wx0, wy0, wx1, wy1], outline=LINE, width=3)
     draw.line([((wx0 + wx1) / 2, wy0), ((wx0 + wx1) / 2, wy1)], fill=LINE, width=2)
+    if valid_flag(SCENE_CTX["flag"]):
+        pole_x = W * 0.09
+        draw.line([(pole_x, H * 0.24), (pole_x, floor_y + 40)], fill=(200, 190, 175), width=6)
+        _paste_flag(SCENE_CTX["flag"], pole_x, H * 0.24, 300, t, wave=8)
     tx0, tx1 = W * 0.17, W * 0.83
     foot_y = floor_y + 70
     people = _cast("official", 4, salt=8)
@@ -685,6 +876,10 @@ def draw_leader(draw, t, W, H):
     for i, xf in enumerate([0.1, 0.24, 0.37, 0.63, 0.76, 0.9]):
         _person(draw, audience[i], W * xf, horizon + 190, 300, t, phase=i * 1.3, flip=(xf > 0.5), seed=i + 1)
     cx = W / 2
+    if valid_flag(SCENE_CTX["flag"]):
+        pole_x = cx - 330
+        draw.line([(pole_x, horizon - 330), (pole_x, horizon + 240)], fill=(200, 190, 175), width=7)
+        _paste_flag(SCENE_CTX["flag"], pole_x, horizon - 330, 360, t, wave=9)
     ped_top = horizon + 230
     draw.rectangle([cx - 140, ped_top - 20, cx + 140, ped_top + 70], fill=(120, 110, 100))
     draw.rectangle([cx, ped_top - 20, cx + 140, ped_top + 70], fill=_shade((120, 110, 100)))
@@ -828,24 +1023,26 @@ def render_frames(beats: list[dict], duration: float, frames_dir: Path) -> None:
 
     for i in range(n_frames):
         t = i / FPS
-        scene_fn = SCENES["map"]
+        # Hold the most recent beat that has started. Whisper's word timing
+        # leaves small gaps between beats, and a frame inside a gap must
+        # keep showing the previous scene rather than flashing a fallback.
         beat_idx = 0
-        active_beat = beats[-1] if beats else {"start": 0, "end": duration}
         for bi, beat in enumerate(beats):
-            if beat["start"] <= t < beat["end"] or (beat is beats[-1] and t >= beat["start"]):
-                scene_fn = SCENES.get(beat["scene"], SCENES["map"])
-                active_beat = beat
+            if beat["start"] <= t:
                 beat_idx = bi
-                break
+        active_beat = beats[beat_idx] if beats else {"start": 0, "end": duration, "scene": "map"}
+        scene_fn = SCENES.get(active_beat["scene"], SCENES["map"])
 
         img = Image.new("RGB", (big_W, big_H), (35, 10, 10))
         draw = ImageDraw.Draw(img)
         CAST["img"] = img  # lets scenes paste character sprites onto this frame
-        scene_fn(draw, t, big_W, big_H)
-
         b_start, b_end = active_beat["start"], active_beat["end"]
         b_dur = max(b_end - b_start, 0.01)
         local_frac = min(max((t - b_start) / b_dur, 0.0), 1.0)
+        SCENE_CTX["places"] = active_beat.get("places") or []
+        SCENE_CTX["flag"] = active_beat.get("flag")
+        SCENE_CTX["progress"] = local_frac
+        scene_fn(draw, t, big_W, big_H)
         # Alternate zoom-in / zoom-out and pan corner by beat for variety.
         progress = local_frac if beat_idx % 2 == 0 else (1 - local_frac)
         corner_x = 1.0 if beat_idx % 3 in (0, 1) else 0.0

@@ -1140,6 +1140,12 @@ def _row(draw, t, role, xs, foot_dy, height, horizon, W, salt, flip_odd=True, ph
 def draw_set_scene(draw, t, W, H):
     scene = CAST["scene"]
     CAST["img"].paste(_set_backdrop(scene, W, H), (0, 0))
+    manifest = _set_manifest()
+    if manifest and manifest.get("populated"):
+        # The backdrop image already has its people drawn in by the
+        # generator (see README: "populated" sets), so there is no
+        # separate sprite layer, idle-bob animation, or flag overlay to add.
+        return
     horizon = H * HORIZON_FRAC
     if scene == "jungle":  # countryside
         _row(draw, t, "rural", [0.3, 0.7, 0.5], 300, 430, horizon, W, 1)

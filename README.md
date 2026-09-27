@@ -153,11 +153,28 @@ trigger manually from the Actions tab, optionally passing a specific
    "global"), `south_asia_1940s` for anything the script tags
    `south_asia` (its cast covers Sikh, Muslim and Hindu men, women,
    villagers, officials and soldiers; it also adds a `temple` scene), and
-   `HISTORY_SET` overrides the choice. Sets were
-   generated with Adobe Firefly. To add one, generate backdrops and
-   character sheets on a plain white background, run the two scripts, and
-   write a `cast.json`. Scenes without a backdrop, and the map scene,
-   still use the drawn versions.
+   `HISTORY_SET` overrides the choice. Sets were generated with Adobe
+   Firefly. A set is built one of two ways:
+   - **Cutout sprites** (`europe_1920s`, `south_asia_1940s`): generate
+     empty backdrops and separate character sheets on a plain white
+     background, cut sprites out with `scripts/extract_sprites.py`, fit
+     the backdrops with `scripts/prepare_backdrop.py`, and write a
+     `cast.json` with `"roles"` (which sprites fill which role) and
+     `"backdrops"`. The generator casts sprites onto the backdrop per
+     scene, with idle-bob animation, and a different cast per clip (see
+     `_cast`, seeded from the title).
+   - **Populated** (`cold_war_berlin`): generate each scene with its
+     people already drawn in by Firefly in the same image (write detailed
+     prompts -- describe each figure's clothing, pose and the setting;
+     forbid real flags, emblems and legible text), fit each with
+     `prepare_backdrop.py`, and write a `cast.json` with `"populated":
+     true` and just `"backdrops"` (no `"roles"`, no `characters/`
+     folder). This is the simpler, now-preferred way to add a set: no
+     sprite-cutting step, and the lighting and art style of the people
+     always match the background, at the cost of the same people
+     appearing in every clip that uses the set and no idle animation.
+   Scenes without a backdrop, and the map scene, still use the drawn
+   versions.
 5. Writes the result to `queue/review_pending/`, **not**
    `queue/pending/`.
 

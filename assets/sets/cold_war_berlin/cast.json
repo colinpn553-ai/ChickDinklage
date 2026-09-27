@@ -1,0 +1,22 @@
+{
+  "note": "Cold War Berlin, c. 1949-1989 (divided Germany). Sprites cut from generated character sheets; backdrops fitted by scripts/prepare_backdrop.py.",
+  "roles": {
+    "civilian": ["cw_civ_1_1", "cw_civ_1_2", "cw_civ_1_4", "cw_civ_1_6", "cw_civ_2_1", "cw_civ_2_3", "cw_civ_2_4", "cw_wom_1_1", "cw_wom_1_3", "cw_wom_1_4", "cw_wom_2_1", "cw_wom_2_3"],
+    "rural": ["cw_civ_1_2", "cw_civ_2_4", "cw_wom_1_3", "cw_wom_2_1"],
+    "official": ["cw_off_2_1", "cw_off_2_2", "cw_off_2_3", "cw_off_2_4", "cw_off_1_2", "cw_off_1_3"],
+    "military": ["cw_mil_1_1", "cw_mil_1_2", "cw_mil_1_3", "cw_mil_1_4", "cw_mil_1_5", "cw_mil_2_2"],
+    "mixed": ["cw_civ_1_1", "cw_civ_1_4", "cw_civ_2_1", "cw_civ_2_3", "cw_wom_1_1", "cw_wom_1_4", "cw_wom_2_1", "cw_wom_2_3", "cw_off_2_1", "cw_off_1_2"],
+    "urban": ["cw_civ_1_1", "cw_civ_1_4", "cw_civ_1_6", "cw_civ_2_1", "cw_civ_2_3", "cw_wom_1_1", "cw_wom_1_4", "cw_wom_2_3", "cw_off_2_1", "cw_off_2_2", "cw_off_1_2", "cw_off_1_3"]
+  },
+  "backdrops": {
+    "jungle": "road",
+    "building": "admin",
+    "crowd": "square",
+    "soldiers": "checkpoint",
+    "meeting": "council",
+    "leader": "podium",
+    "fire": "street",
+    "prison": "prison",
+    "exodus": "road"
+  }
+}

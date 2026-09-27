@@ -148,7 +148,9 @@ trigger manually from the Actions tab, optionally passing a specific
    fitted so their ground line sits on the horizon the sprites stand on,
    via `scripts/prepare_backdrop.py`). `SET_FOR` in the generator maps
    (setting, era) to a set; `europe_1920s` is used for early-1900s
-   European topics, `south_asia_1940s` for anything the script tags
+   European topics, `cold_war_berlin` for European topics set 1945-1991
+   (the "europe" setting now caps there, not 1945 -- anything later is
+   "global"), `south_asia_1940s` for anything the script tags
    `south_asia` (its cast covers Sikh, Muslim and Hindu men, women,
    villagers, officials and soldiers; it also adds a `temple` scene), and
    `HISTORY_SET` overrides the choice. Sets were

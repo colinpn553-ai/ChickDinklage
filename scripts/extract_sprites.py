@@ -48,6 +48,23 @@ def foreground_mask(im: Image.Image) -> np.ndarray:
     return fg
 
 
+
+def strip_floor_band(fg: np.ndarray, cov_thresh: float = 0.9) -> np.ndarray:
+    """Some sheets stand the figures on a solid-color ground rectangle that
+    spans the full width, fusing every figure into one column. Clear any
+    such band anchored at the very bottom of the sheet before splitting."""
+    fg = fg.copy()
+    rows = np.where(fg.any(axis=1))[0]
+    if len(rows) == 0:
+        return fg
+    cov = fg.mean(axis=1)
+    y = rows.max()
+    while y >= 0 and cov[y] > cov_thresh:
+        fg[y] = False
+        y -= 1
+    return fg
+
+
 def split_columns(fg: np.ndarray, min_gap: int, min_w: int) -> list[tuple[int, int]]:
     # Ignore the bottom band: ground shadows under the feet join neighbours.
     rows = np.where(fg.any(axis=1))[0]
@@ -80,7 +97,7 @@ def main() -> None:
     a = ap.parse_args()
 
     im = Image.open(a.sheet).convert("RGB")
-    fg = foreground_mask(im)
+    fg = strip_floor_band(foreground_mask(im))
     rows = np.where(fg.any(axis=1))[0]
     y_top, y_bot = rows.min(), rows.max()
     spans = split_columns(fg, a.min_gap, a.min_w)

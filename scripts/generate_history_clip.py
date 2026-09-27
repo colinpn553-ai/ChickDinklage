@@ -114,8 +114,11 @@ accurately.
 - Also pick one "era" for the illustrations' clothing: "early_1900s" if the \
 topic is set mostly before about 1930, otherwise "modern".
 - Also pick one "setting": "europe" if the events take place mainly in Europe \
-in the period discussed (up to about 1945), so the illustrations draw only \
-characters who fit that setting; "south_asia" if the events take place mainly in the Indian subcontinent (India, Pakistan, Bangladesh, Sri Lanka, Nepal) in the period discussed (up to about 1950); otherwise "global".
+in the period discussed (up to 1991, the end of the Cold War), so the \
+illustrations draw only characters who fit that setting; "south_asia" if the \
+events take place mainly in the Indian subcontinent (India, Pakistan, \
+Bangladesh, Sri Lanka, Nepal) in the period discussed (up to about 1950); \
+otherwise "global" (including Europe after 1991).
 - For a beat whose scene is "map", also add "places": a list of 1-4 ISO 3166-1 \
 alpha-2 codes (e.g. "KH") for the PRESENT-DAY countries the beat is about, main \
 one first. The map shows present-day borders, so use today's countries even if \
@@ -561,7 +564,8 @@ SETS_DIR = REPO_ROOT / "assets" / "sets"
 # characters) plus painted backdrops. Chosen by (setting, era); falls back to
 # the generic base cast + drawn scenery when no set matches.
 SET_FOR = {("europe", "early_1900s"): "europe_1920s",
-           ("south_asia", None): "south_asia_1940s"}  # None = any era
+           ("europe", "modern"): "cold_war_berlin",  # "europe" now caps at 1991, so
+           ("south_asia", None): "south_asia_1940s"}  # "modern" here means 1945-1991
 SETTINGS = ("europe", "south_asia", "global")
 
 ROLE_POOLS = {

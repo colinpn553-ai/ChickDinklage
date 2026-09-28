@@ -152,7 +152,13 @@ trigger manually from the Actions tab, optionally passing a specific
    (the "europe" setting now caps there, not 1945 -- anything later is
    "global"), `south_asia_1940s` for anything the script tags
    `south_asia` (its cast covers Sikh, Muslim and Hindu men, women,
-   villagers, officials and soldiers; it also adds a `temple` scene), and
+   villagers, officials and soldiers; it also adds a `temple` scene),
+   `central_africa_1990s` for anything tagged `africa` (Sub-Saharan
+   topics from roughly 1960 on -- built for the Rwandan genocide but
+   reusable for nearby topics; deliberately does not try to visually
+   distinguish Hutu from Tutsi, since that was a colonial-era
+   administrative classification, not a real physical distinction, and
+   drawing it as one would reproduce a harmful stereotype), and
    `HISTORY_SET` overrides the choice. Sets were generated with Adobe
    Firefly. A set is built one of two ways:
    - **Cutout sprites** (`europe_1920s`, `south_asia_1940s`): generate
@@ -163,16 +169,23 @@ trigger manually from the Actions tab, optionally passing a specific
      `"backdrops"`. The generator casts sprites onto the backdrop per
      scene, with idle-bob animation, and a different cast per clip (see
      `_cast`, seeded from the title).
-   - **Populated** (`cold_war_berlin`): generate each scene with its
-     people already drawn in by Firefly in the same image (write detailed
-     prompts -- describe each figure's clothing, pose and the setting;
-     forbid real flags, emblems and legible text), fit each with
-     `prepare_backdrop.py`, and write a `cast.json` with `"populated":
-     true` and just `"backdrops"` (no `"roles"`, no `characters/`
-     folder). This is the simpler, now-preferred way to add a set: no
-     sprite-cutting step, and the lighting and art style of the people
-     always match the background, at the cost of the same people
+   - **Populated** (`cold_war_berlin`, `central_africa_1990s`): generate
+     each scene with its people already drawn in by Firefly in the same
+     image (write detailed prompts -- describe each figure's clothing,
+     pose and the setting; forbid real flags, emblems and legible text),
+     fit each with `prepare_backdrop.py`, and write a `cast.json` with
+     `"populated": true` and just `"backdrops"` (no `"roles"`, no
+     `characters/` folder). This is the simpler, now-preferred way to add
+     a set: no sprite-cutting step, and the lighting and art style of the
+     people always match the background, at the cost of the same people
      appearing in every clip that uses the set and no idle animation.
+     Gotcha: if a source image has its people filling nearly the whole
+     frame down to the bottom edge (little ground margin below their
+     feet), pass `--base` close to `HORIZON_FRAC` (0.62) rather than the
+     visually "true" foot position -- a high `--base` there forces
+     `prepare_backdrop.py`'s floor-extend step to stretch a strip that
+     includes their legs instead of empty ground, visibly distorting
+     them.
    Scenes without a backdrop, and the map scene, still use the drawn
    versions.
 5. Writes the result to `queue/review_pending/`, **not**

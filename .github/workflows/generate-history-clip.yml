@@ -16,7 +16,7 @@ on:
         description: "Optional: force the casting setting (europe / south_asia = use that region's cast and backdrops; blank = let the script decide)"
         required: false
         type: choice
-        options: ["", "europe", "south_asia", "global"]
+        options: ["", "europe", "south_asia", "africa", "global"]
 
 permissions:
   contents: write

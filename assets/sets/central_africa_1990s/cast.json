@@ -1,0 +1,14 @@
+{
+  "note": "Central/East Africa, c. 1990s (Rwandan genocide era and similar Great Lakes region topics). \"populated\": true means these backdrops already have their people drawn in by Firefly, in the same generation as the scene -- no separate character sheets, no sprite cutouts, no Python-side compositing or idle-bob animation. Deliberately does not attempt to visually distinguish Hutu from Tutsi -- that classification was colonial-era and administrative, not a reliable physical distinction, and depicting it as one would reproduce a harmful stereotype. Violence is kept off-screen throughout (aftermath/mood only, no depicted harm).",
+  "populated": true,
+  "backdrops": {
+    "jungle": "jungle",
+    "building": "building",
+    "crowd": "crowd",
+    "soldiers": "soldiers",
+    "meeting": "meeting",
+    "leader": "leader",
+    "fire": "fire",
+    "exodus": "exodus"
+  }
+}

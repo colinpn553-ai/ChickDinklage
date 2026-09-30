@@ -159,7 +159,10 @@ trigger manually from the Actions tab, optionally passing a specific
    distinguish Hutu from Tutsi, since that was a colonial-era
    administrative classification, not a real physical distinction, and
    drawing it as one would reproduce a harmful stereotype), and
-   `HISTORY_SET` overrides the choice. Sets were generated with Adobe
+   `cuban_missile_crisis_1962` for the `cuba` setting -- narrowly built
+   for that one 1962 event specifically (it spans Soviet, American and
+   Cuban scenes), not a general Latin America/Caribbean set. `HISTORY_SET`
+   overrides the choice. Sets were generated with Adobe
    Firefly. A set is built one of two ways:
    - **Cutout sprites** (`europe_1920s`, `south_asia_1940s`): generate
      empty backdrops and separate character sheets on a plain white
@@ -169,7 +172,8 @@ trigger manually from the Actions tab, optionally passing a specific
      `"backdrops"`. The generator casts sprites onto the backdrop per
      scene, with idle-bob animation, and a different cast per clip (see
      `_cast`, seeded from the title).
-   - **Populated** (`cold_war_berlin`, `central_africa_1990s`): generate
+   - **Populated** (`cold_war_berlin`, `central_africa_1990s`,
+     `cuban_missile_crisis_1962`): generate
      each scene with its people already drawn in by Firefly in the same
      image (write detailed prompts -- describe each figure's clothing,
      pose and the setting; forbid real flags, emblems and legible text),

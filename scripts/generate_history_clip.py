@@ -121,8 +121,8 @@ illustrations draw only characters who fit that setting; "south_asia" if the \
 events take place mainly in the Indian subcontinent (India, Pakistan, \
 Bangladesh, Sri Lanka, Nepal) in the period discussed (up to about 1950); \
 "africa" if the events take place mainly in Sub-Saharan Africa in the period \
-discussed (roughly 1960 onward); otherwise "global" (including Europe after \
-1991).
+discussed (roughly 1960 onward); "cuba" for the 1962 Cuban Missile Crisis \
+specifically; otherwise "global" (including Europe after 1991).
 - For a beat whose scene is "map", also add "places": a list of 1-4 ISO 3166-1 \
 alpha-2 codes (e.g. "KH") for the PRESENT-DAY countries the beat is about, main \
 one first. The map shows present-day borders, so use today's countries even if \
@@ -142,7 +142,7 @@ before 1998). When unsure, omit "flag". Never add "flag" to other scenes.
 
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {{"title": "Short punchy title, no quotes", "era": "modern_or_early_1900s", \
-"setting": "europe_or_south_asia_or_africa_or_global", "beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
+"setting": "europe_or_south_asia_or_africa_or_cuba_or_global", "beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
 (map beats may also carry "places": ["XX"] and "historical_names": {{"XX": \
 "..."}}; building/meeting/leader beats may also carry "flag": "xx" under the \
 rules above.)
@@ -584,8 +584,9 @@ SETS_DIR = REPO_ROOT / "assets" / "sets"
 SET_FOR = {("europe", "early_1900s"): "europe_1920s",
            ("europe", "modern"): "cold_war_berlin",  # "europe" now caps at 1991, so
            ("south_asia", None): "south_asia_1940s",  # "modern" here means 1945-1991
-           ("africa", None): "central_africa_1990s"}
-SETTINGS = ("europe", "south_asia", "africa", "global")
+           ("africa", None): "central_africa_1990s",
+           ("cuba", None): "cuban_missile_crisis_1962"}
+SETTINGS = ("europe", "south_asia", "africa", "cuba", "global")
 
 ROLE_POOLS = {
     "civilian": ["elder_man_vest", "woman_red_cardigan", "young_man_hoodie",

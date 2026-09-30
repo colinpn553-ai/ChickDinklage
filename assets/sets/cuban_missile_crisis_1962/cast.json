@@ -1,0 +1,11 @@
+{
+  "note": "Cuban Missile Crisis, October 1962. Spans three nationalities (Soviet, American, Cuban), so unlike the other populated sets this one maps different scene tags to different countries' people rather than one consistent regional cast -- that's fine since populated scenes don't share a cast pool anyway.",
+  "populated": true,
+  "backdrops": {
+    "soldiers": "soldiers",
+    "building": "building",
+    "meeting": "meeting",
+    "crowd": "crowd",
+    "leader": "leader"
+  }
+}

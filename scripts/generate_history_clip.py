@@ -96,8 +96,10 @@ note complexity/nuance briefly rather than oversimplifying, and do not invent \
 specific facts, quotes, or figures you are not confident about.
 - Do not include graphic descriptions of violence. Reference tragic events \
 with gravity and respect for victims, without dwelling on graphic detail.
-- 130-190 words total, split into 5-8 short "beats" (1-2 sentences each) that \
-move through the topic roughly chronologically.
+- 65-85 words total, split into 4-5 short "beats" (1 sentence each, 2 only if \
+short) that move through the topic roughly chronologically. This is a short \
+~30-second clip, not a long-form summary, so be selective and pick only the \
+most essential beats.
 - For each beat, pick exactly one "scene" tag from this fixed list that best \
 matches what the beat is describing: {scenes}
   (jungle = rural/countryside settings; building = government/capital; \
@@ -125,7 +127,12 @@ discussed (roughly 1960 onward); otherwise "global" (including Europe after \
 alpha-2 codes (e.g. "KH") for the PRESENT-DAY countries the beat is about, main \
 one first. The map shows present-day borders, so use today's countries even if \
 the period had different ones (e.g. for the former Yugoslavia, list the \
-successor countries).
+successor countries). If the period's common name for one of those places \
+would mislead a viewer (most often "RU" during 1922-1991, when it should read \
+"Soviet Union" rather than "Russian Federation"), also add \
+"historical_names": {{"XX": "Name at the time"}} for just that code. Omit it \
+when the present-day name is still accurate for the period, and never guess \
+for a code you are unsure about.
 - For a beat whose scene is "building", "meeting" or "leader", you may add \
 "flag": a lowercase ISO alpha-2 code, but ONLY if you are confident that \
 country used essentially the same national flag as today's during the period \
@@ -136,8 +143,9 @@ before 1998). When unsure, omit "flag". Never add "flag" to other scenes.
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {{"title": "Short punchy title, no quotes", "era": "modern_or_early_1900s", \
 "setting": "europe_or_south_asia_or_africa_or_global", "beats": [{{"narration": "...", "scene": "one_of_the_scene_tags"}}, ...]}}
-(map beats may also carry "places": ["XX"]; building/meeting/leader beats may \
-also carry "flag": "xx" under the rules above.)
+(map beats may also carry "places": ["XX"] and "historical_names": {{"XX": \
+"..."}}; building/meeting/leader beats may also carry "flag": "xx" under the \
+rules above.)
 """
 
 
@@ -193,6 +201,14 @@ def generate_script(topic: str) -> tuple[str, str, str, list[dict]]:
         beat["places"] = [c.upper() for c in (raw_places or []) if valid_place(c)][:4]
         flag = beat.get("flag") if beat["scene"] in ("building", "meeting", "leader") else None
         beat["flag"] = flag.lower() if valid_flag(flag) else None
+        # A period-appropriate label override (e.g. "RU" -> "Soviet Union") for
+        # the map's country labels; only honored for codes actually shown.
+        raw_hist = beat.get("historical_names") if beat["scene"] == "map" else None
+        beat["historical_names"] = {
+            k.upper(): v.strip() for k, v in (raw_hist or {}).items()
+            if isinstance(k, str) and k.upper() in beat["places"]
+            and isinstance(v, str) and 0 < len(v.strip()) <= 40
+        }
     return title, era, setting, beats
 
 
@@ -721,7 +737,7 @@ GEO_PATH = REPO_ROOT / "assets" / "geo" / "countries.json.gz"
 FLAG_DIR = REPO_ROOT / "assets" / "flags"
 
 # Per-beat context, set by render_frames before each scene is drawn.
-SCENE_CTX = {"places": [], "flag": None, "progress": 0.0}
+SCENE_CTX = {"places": [], "flag": None, "progress": 0.0, "historical_names": {}}
 _GEO = {"countries": None}
 _FLAG_CACHE: dict = {}
 
@@ -790,6 +806,13 @@ def _paste_flag(code: str, x: float, y: float, width: int, t: float, wave: float
 def _smoothstep(v: float) -> float:
     v = min(max(v, 0.0), 1.0)
     return v * v * (3 - 2 * v)
+
+
+def _map_label(countries, code: str) -> str:
+    """The name to print for a country on the map -- a period-appropriate
+    override (e.g. "RU" -> "Soviet Union") when the script supplied one,
+    since the map itself always draws present-day borders."""
+    return SCENE_CTX["historical_names"].get(code, countries[code]["name"])
 
 
 def draw_map(draw, t, W, H):
@@ -870,7 +893,7 @@ def draw_map(draw, t, W, H):
         # and shrink them a little so neighbours' names don't pile up.
         f = font if len(places) == 1 else small
         dy = -46 if n % 2 == 0 else 78
-        draw.text((lx, ly + dy), countries[code]["name"], font=f, fill=(255, 255, 255),
+        draw.text((lx, ly + dy), _map_label(countries, code), font=f, fill=(255, 255, 255),
                   anchor="ms", stroke_width=5, stroke_fill=(30, 30, 30))
 
     # Neighbours: label the larger ones that are on screen, so the view has context.
@@ -885,7 +908,7 @@ def draw_map(draw, t, W, H):
         wpx = (big[0][2] - big[0][0]) * cos0 * scale
         crowded = any((px - qx) ** 2 + (py - qy) ** 2 < 230 ** 2 for qx, qy in label_pts)
         if (0.08 * W < px < 0.92 * W and 0.08 * H < py < 0.62 * H and wpx > 190 and not crowded):
-            draw.text((px, py), c["name"], font=small, fill=(60, 50, 35), anchor="mm",
+            draw.text((px, py), _map_label(countries, code), font=small, fill=(60, 50, 35), anchor="mm",
                       stroke_width=3, stroke_fill=(232, 222, 190))
 
     draw.text((W / 2, H * 0.72), "Present-day borders", font=small, fill=(255, 255, 255),
@@ -1242,6 +1265,7 @@ def render_frames(beats: list[dict], duration: float, frames_dir: Path) -> None:
         local_frac = min(max((t - b_start) / b_dur, 0.0), 1.0)
         SCENE_CTX["places"] = active_beat.get("places") or []
         SCENE_CTX["flag"] = active_beat.get("flag")
+        SCENE_CTX["historical_names"] = active_beat.get("historical_names") or {}
         SCENE_CTX["progress"] = local_frac
         scene_fn(draw, t, big_W, big_H)
         # Alternate zoom-in / zoom-out and pan corner by beat for variety.

@@ -107,8 +107,8 @@ trigger manually from the Actions tab, optionally passing a specific
 `topic` input instead of a random pick from `HISTORY_TOPICS` in
 `scripts/generate_history_clip.py`). For each run it:
 
-1. Asks Claude for a short, neutral, documentary-style script (130-190
-   words) split into beats, each tagged with one scene from a fixed
+1. Asks Claude for a short, neutral, documentary-style script (65-85
+   words, ~30 seconds narrated) split into beats, each tagged with one scene from a fixed
    vocabulary (jungle, building, crowd, soldiers, map, meeting, leader,
    fire, prison, mosque, church, exodus) — see the prompt in
    `HISTORY_PROMPT` for the full tone/accuracy instructions.

@@ -1,0 +1,34 @@
+{
+  "title": "The Speech That Ended Italian Democracy",
+  "topic": "Mussolini's January 3, 1925 speech (translated from Italian, with archival photographs)",
+  "era": "early_1900s",
+  "setting": "europe",
+  "caption_extra": "Translated from Mussolini's January 3, 1925 speech to the Italian Chamber of Deputies (Italian text: Wikisource). Archival photos are public domain via Wikimedia Commons and are from other occasions, not this speech.",
+  "beats": [
+    {
+      "narration": "January 1925. Opposition deputies have boycotted Italy's parliament since the murder of Giacomo Matteotti.",
+      "photo": "mussolini_1925/chamber.jpg",
+      "label": "Italian Chamber of Deputies"
+    },
+    {
+      "narration": "Mussolini rises and declares: \"I alone assume the political, moral, and historical responsibility for everything that has happened.\"",
+      "photo": "mussolini_1925/podium_1932.jpg",
+      "label": "Mussolini speaking, 1932 (different occasion)"
+    },
+    {
+      "narration": "He says Italy wants peace, and will get it \"with love, if possible, or with force if necessary.\"",
+      "photo": "mussolini_1925/crowd_1926.jpg",
+      "label": "Rally crowd, 1926 (different occasion)"
+    },
+    {
+      "narration": "Within days, police shut opposition clubs and seized newspapers.",
+      "photo": "mussolini_1925/officials_1928.jpg",
+      "label": "Mussolini with officials, 1928"
+    },
+    {
+      "narration": "Within two years, Italy was a one-party state.",
+      "photo": "mussolini_1925/piazza_venezia_1940.jpg",
+      "label": "Piazza Venezia crowd, 1940 (different occasion)"
+    }
+  ]
+}

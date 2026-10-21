@@ -18,6 +18,11 @@ on:
         type: choice
         options: ["", "europe", "south_asia", "africa", "cuba", "global"]
 
+      script_file:
+        description: "Optional: path to a hand-written script JSON (e.g. assets/scripts/mussolini_1925_speech.json) used instead of an LLM-written one"
+        required: false
+        type: string
+
 permissions:
   contents: write
 
@@ -45,6 +50,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           HISTORY_TOPIC: ${{ inputs.topic }}
           HISTORY_SETTING: ${{ inputs.setting }}
+          HISTORY_SCRIPT: ${{ inputs.script_file }}
         run: python scripts/generate_history_clip.py
 
       - name: Commit new clip

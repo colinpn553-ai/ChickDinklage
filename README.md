@@ -252,3 +252,16 @@ export GITHUB_REF_NAME=main
 pip install -r scripts/requirements.txt
 python scripts/post_to_instagram.py
 ```
+
+### Speech / archival-photo clips
+
+`HISTORY_SCRIPT` (workflow input `script_file`) points at a hand-written
+script JSON under `assets/scripts/` instead of an LLM-written one, with
+beats tagged `scene: "photo"`, a `photo` under `assets/photos/` and a
+`label`. Use it for translated speeches: take the original text from a
+reliable source (e.g. Wikisource), keep the quoted lines short and
+faithful, narrate context around them, and only use photos whose license
+allows reuse (Wikimedia Commons public domain / CC), labelling any photo
+from a different occasion than the words being narrated. Put the source
+and photo credit in `caption_extra`. Example:
+`assets/scripts/mussolini_1925_speech.json`.

@@ -738,7 +738,7 @@ GEO_PATH = REPO_ROOT / "assets" / "geo" / "countries.json.gz"
 FLAG_DIR = REPO_ROOT / "assets" / "flags"
 
 # Per-beat context, set by render_frames before each scene is drawn.
-SCENE_CTX = {"places": [], "flag": None, "progress": 0.0, "historical_names": {}}
+SCENE_CTX = {"places": [], "flag": None, "progress": 0.0, "historical_names": {}, "photo": None, "label": ""}
 _GEO = {"countries": None}
 _FLAG_CACHE: dict = {}
 
@@ -1212,6 +1212,51 @@ def draw_set_scene(draw, t, W, H):
                     phase=i * 0.7, hop=9, seed=i + 2)
 
 
+
+# --- Photo scenes (archival photographs, for "speech" style clips) ---------
+# A script file (HISTORY_SCRIPT) can tag beats scene="photo" with a "photo"
+# path under assets/photos/ and a short "label" (year/place + a note when the
+# photo is from a different occasion than the words being narrated). Only use
+# photos whose license allows it (public domain / CC) and record the credit
+# in the script's "caption_extra".
+
+PHOTO_DIR = REPO_ROOT / "assets" / "photos"
+_PHOTO_CACHE: dict = {}
+
+
+def _photo(rel: str):
+    if rel not in _PHOTO_CACHE:
+        path = PHOTO_DIR / rel
+        _PHOTO_CACHE[rel] = Image.open(path).convert("RGB") if path.is_file() else None
+    return _PHOTO_CACHE[rel]
+
+
+def draw_photo(draw, t, W, H):
+    im = _photo(SCENE_CTX.get("photo") or "")
+    if im is None:
+        return draw_map(draw, t, W, H)
+    bg = im.resize((W, H), Image.BILINEAR).filter(ImageFilter.GaussianBlur(40))
+    bg = Image.blend(bg, Image.new("RGB", (W, H), (12, 10, 8)), 0.6)
+    CAST["img"].paste(bg, (0, 0))
+    fw = int(W * 0.86)
+    fh = int(im.height * fw / im.width)
+    if fh > H * 0.55:  # tall photo: fit by height instead
+        fh = int(H * 0.55)
+        fw = int(im.width * fh / im.height)
+    fg = im.resize((fw, fh), Image.LANCZOS)
+    x0, y0 = (W - fw) // 2, int(H * 0.40 - fh / 2)
+    draw.rectangle([x0 - 8, y0 - 8, x0 + fw + 8, y0 + fh + 8], fill=(236, 228, 210))
+    CAST["img"].paste(fg, (x0, y0))
+    label = SCENE_CTX.get("label") or ""
+    if label:
+        try:
+            f = ImageFont.truetype(FONT_PATH, 44)
+        except OSError:
+            f = ImageFont.load_default()
+        draw.text((W / 2, y0 + fh + 52), label, font=f, fill=(236, 228, 210), anchor="mm",
+                  stroke_width=3, stroke_fill=(20, 16, 12))
+
+
 SCENES = {
     "jungle": draw_jungle,
     "building": draw_building,
@@ -1226,6 +1271,7 @@ SCENES = {
     "church": draw_church,
     "temple": draw_building,  # generic stand-in when no set supplies a temple backdrop
     "exodus": draw_exodus,
+    "photo": draw_photo,
 }
 
 # Slow "Ken Burns" zoom/pan: scenes are drawn oversized and cropped to the
@@ -1267,6 +1313,8 @@ def render_frames(beats: list[dict], duration: float, frames_dir: Path) -> None:
         SCENE_CTX["places"] = active_beat.get("places") or []
         SCENE_CTX["flag"] = active_beat.get("flag")
         SCENE_CTX["historical_names"] = active_beat.get("historical_names") or {}
+        SCENE_CTX["photo"] = active_beat.get("photo")
+        SCENE_CTX["label"] = active_beat.get("label", "")
         SCENE_CTX["progress"] = local_frac
         scene_fn(draw, t, big_W, big_H)
         # Alternate zoom-in / zoom-out and pan corner by beat for variety.
@@ -1362,7 +1410,22 @@ def main() -> int:
     topic = os.environ.get("HISTORY_TOPIC") or random.choice(HISTORY_TOPICS)
     print(f"Topic: {topic}")
 
-    title, era, setting, beats = generate_script(topic)
+    script_file = os.environ.get("HISTORY_SCRIPT", "").strip()
+    caption_extra = ""
+    if script_file:
+        # A hand-written script (e.g. a translated speech with archival photos)
+        # instead of an LLM-written one. Path is relative to the repo root.
+        sd = json.loads((REPO_ROOT / script_file).read_text(encoding="utf-8"))
+        title, era, setting, beats = sd["title"], sd.get("era", "early_1900s"), sd.get("setting", "global"), sd["beats"]
+        caption_extra = sd.get("caption_extra", "")
+        topic = sd.get("topic", topic)
+        for b in beats:
+            b.setdefault("scene", "photo" if b.get("photo") else "map")
+            b.setdefault("places", [])
+            b.setdefault("flag", None)
+            b.setdefault("historical_names", {})
+    else:
+        title, era, setting, beats = generate_script(topic)
     forced = os.environ.get("HISTORY_SETTING", "").strip().lower()
     CAST["setting"] = forced if forced in SETTINGS else setting
     CAST["era"] = era
@@ -1408,6 +1471,8 @@ def main() -> int:
         print(f"Assembled {out_video.name}")
 
     caption = f"{title} \U0001f4dc #history #historytok #didyouknow #education"
+    if caption_extra:
+        caption = f"{caption_extra}\n\n{caption}"
     (REVIEW_DIR / f"{base_name}.json").write_text(
         json.dumps({"caption": caption, "topic": topic}, ensure_ascii=False, indent=2),
         encoding="utf-8",

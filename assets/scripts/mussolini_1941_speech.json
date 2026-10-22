@@ -1,0 +1,30 @@
+{
+  "title": "Mussolini, Feb. 23, 1941",
+  "topic": "Mussolini's February 23, 1941 speech to the Blackshirts of Rome: Italy and Germany, side by side (English translation, with archival photographs)",
+  "era": "early_1900s",
+  "setting": "europe",
+  "narration_audio": "assets/audio/mussolini_1941_intense.wav",
+  "caption_extra": "A key passage from Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time. Italy was out of the war by September 1943, and he was deposed that July. Read by a synthetic voice, not Mussolini's. Archival photos are public domain via Wikimedia Commons and are from other occasions, not this speech.",
+  "beats": [
+    {
+      "narration": "That we shall have to fight hard is certain. That we shall have to fight long is also probable. But the final result will be an Axis victory.",
+      "photo": "mussolini_1941/piazza_venezia_1940.jpg",
+      "label": "Piazza Venezia crowd, 1940 (other occasion)"
+    },
+    {
+      "narration": "Great Britain cannot win the war.",
+      "photo": "mussolini_1941/podium_1932.jpg",
+      "label": "Mussolini, 1932 (other occasion)"
+    },
+    {
+      "narration": "Although anything may happen, Italy will march with Germany, side by side, to the end.",
+      "photo": "mussolini_1941/hitler_mussolini_1934.jpg",
+      "label": "Hitler and Mussolini, 1934"
+    },
+    {
+      "narration": "The alliance between Italy and Germany is not only between two states, or two armies, or two diplomacies, but between two peoples and two revolutions, and is destined to give its imprint upon the century.",
+      "photo": "mussolini_1941/hitler_mussolini_1941.jpg",
+      "label": "Hitler and Mussolini, Aug. 1941"
+    }
+  ]
+}

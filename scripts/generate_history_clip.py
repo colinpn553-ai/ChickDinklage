@@ -1424,6 +1424,7 @@ def main() -> int:
     script_file = os.environ.get("HISTORY_SCRIPT", "").strip()
     caption_extra = ""
     voice_path, length_scale = "", 1.0
+    narration_audio = ""
     if script_file:
         # A hand-written script (e.g. a translated speech with archival photos)
         # instead of an LLM-written one. Path is relative to the repo root.
@@ -1431,6 +1432,7 @@ def main() -> int:
         title, era, setting, beats = sd["title"], sd.get("era", "early_1900s"), sd.get("setting", "global"), sd["beats"]
         caption_extra = sd.get("caption_extra", "")
         voice_path, length_scale = sd.get("voice", ""), float(sd.get("length_scale", 1.0))
+        narration_audio = sd.get("narration_audio", "")  # pre-recorded/synthesized audio file in the repo
         topic = sd.get("topic", topic)
         for b in beats:
             b.setdefault("scene", "photo" if b.get("photo") else "map")
@@ -1456,12 +1458,17 @@ def main() -> int:
         frames_dir = tmp_path / "frames"
         voice_dir = tmp_path / "voice"
 
-        download_piper_voice(voice_dir, voice_path)
-        print("Piper voice downloaded")
+        if not narration_audio:
+            download_piper_voice(voice_dir, voice_path)
+            print("Piper voice downloaded")
 
         full_text = " ".join(b["narration"] for b in beats)
         speech_text = spell_out_years(full_text)
-        synthesize_narration(speech_text, voice_dir, narration_path, length_scale)
+        if narration_audio:
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(REPO_ROOT / narration_audio),
+                            "-ar", "22050", "-ac", "1", str(narration_path)], check=True)
+        else:
+            synthesize_narration(speech_text, voice_dir, narration_path, length_scale)
         print("Narration synthesized")
 
         whisper_words = transcribe_words(narration_path)

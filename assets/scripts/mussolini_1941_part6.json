@@ -1,0 +1,38 @@
+{
+  "title": "Mussolini, Feb. 23, 1941: Part 6",
+  "topic": "Mussolini's February 23, 1941 speech to the Blackshirts of Rome, Part 6 (English translation, radio-style, with dated archival photographs)",
+  "era": "early_1900s",
+  "setting": "europe",
+  "narration_audio": "assets/audio/mussolini_1941_part6.wav",
+  "audio_fx": "radio",
+  "music": "rotate",
+  "music_volume": 0.1,
+  "caption_extra": "Part 6 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "beats": [
+    {
+      "narration": "The events during these months exasperate our will and must accentuate against the enemy that cold, conscious, implacable hate, hate in every home, which is indispensable for victory.",
+      "photo": "mussolini_1941/chamber_overview_1941-06-10.jpg",
+      "label": "The Chamber, June 1941"
+    },
+    {
+      "narration": "Great Britain's last support on the Continent was and is Greece, the only nation that did not want to renounce the British guarantee. It was necessary to face Greece, and on this point the accord of all responsible military leaders was absolute. I add that the operative plan, prepared by the superior command of the armed forces of Albania, was unanimously approved without reservations. Between the decision and the start of action there was a delay of only two days.",
+      "photo": "mussolini_1941/piazza_venezia_1940.jpg",
+      "label": "Rome crowd, 1940 (other occasion)"
+    },
+    {
+      "narration": "Let it be said once for all that the Italian soldiers in Albania combated superbly. Let it be said in particular that the Alpini wrote pages of blood and glory that would honor any army. When the sufferings of the march by the Julia division almost up to Metzovo are known all will appear legendary.",
+      "photo": "mussolini_1941/podium_1932.jpg",
+      "label": "Mussolini, 1932 (other occasion)"
+    },
+    {
+      "narration": "Neutrals of every continent who are spectators at the bloody clashes between the armed masses must have sufficient shame to keep quiet and not express libelous provocative opinions.",
+      "photo": "mussolini_1941/officials_1928.jpg",
+      "label": "Mussolini with officials, 1928"
+    },
+    {
+      "narration": "The Italian prisoners who fell into the hands of the Greeks are a few thousand, most of them wounded. The Greek successes do not go out of the tactical field and only megalomania has magnified them. The Greek losses are very high and shortly it will be Spring, and as befits such a season, our season, beautiful things will grow. I say beautiful things will be seen in every one of the four cardinal points.",
+      "photo": "mussolini_1941/tanks_libya_1941.jpg",
+      "label": "Italian tanks, Libya, c. 1941"
+    }
+  ]
+}

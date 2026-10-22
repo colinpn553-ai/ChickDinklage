@@ -1,0 +1,28 @@
+{
+  "title": "Mussolini, Feb. 23, 1941: Part 11",
+  "topic": "Mussolini's February 23, 1941 speech to the Blackshirts of Rome, Part 11 (English translation, radio-style, with dated archival photographs)",
+  "era": "early_1900s",
+  "setting": "europe",
+  "narration_audio": "assets/audio/mussolini_1941_part11.wav",
+  "audio_fx": "radio",
+  "music": "rotate",
+  "music_volume": 0.1,
+  "caption_extra": "Part 11 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "beats": [
+    {
+      "narration": "Churchill has not the least idea of the spiritual forces of the Italian people or of what Fascism can do. We can understand Churchill's ordering the shelling of industrial plants at Genoa to disrupt work, but to shell the city in order to break down its morale is a childish illusion. It means that the British do not at all know the race temperament of the Ligurian people in general and the Genoese in particular. It means that they are ignorant of the civilian virtues and proud patriotism of the people who gave the fatherland Columbus, Garibaldi and Mazzini.",
+      "photo": "mussolini_1941/genoa_cathedral_damage_1941-02.jpg",
+      "label": "Genoa cathedral damage, Feb. 1941"
+    },
+    {
+      "narration": "Sixth, Great Britain is alone. This isolation pushes her toward the United States, from which she urgently and desperately seeks aid. The industrial power of the United States certainly is great, but for aid to be useful supplies must safely reach England and also be of such quantity as not only to replace the destruction already inflicted and that which will come to the industrial plants of Britain, but also to bring about superiority over Germany. This is impossible because Germany now works with the men, machines and raw materials of the entire European Continent.",
+      "photo": "mussolini_1941/churchill_liverpool_1941-04.jpg",
+      "label": "Churchill, Liverpool, April 1941"
+    },
+    {
+      "narration": "Seventh, when Great Britain falls, then the war will be ended, even if by any chance it should die out slowly in other countries of the British Empire. Unless, and it is possible, these countries, where already something is fermenting, do not reach their independence once the metropolitan area is conquered. This would bring about a change not only in the European political map, but also in the world's map.",
+      "photo": "mussolini_1941/podium_1932.jpg",
+      "label": "Mussolini, 1932 (other occasion)"
+    }
+  ]
+}

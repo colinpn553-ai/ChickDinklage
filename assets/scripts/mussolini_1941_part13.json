@@ -1,0 +1,28 @@
+{
+  "title": "Mussolini, Feb. 23, 1941: Part 13",
+  "topic": "Mussolini's February 23, 1941 speech to the Blackshirts of Rome, Part 13 (English translation, radio-style, with dated archival photographs)",
+  "era": "early_1900s",
+  "setting": "europe",
+  "narration_audio": "assets/audio/mussolini_1941_part13.wav",
+  "audio_fx": "radio",
+  "music": "rotate",
+  "music_volume": 0.1,
+  "caption_extra": "Part 13 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen. WARNING: the first paragraph repeats an antisemitic conspiracy claim (that the United States is 'dominated by Jews'). It is Mussolini's own propaganda, shown as historical record and not endorsed.",
+  "beats": [
+    {
+      "narration": "Let me say now that what is occurring in the United States is one of the most colossal mystifications in all history. Illusion and lying are the basis of American interventionism, illusion that the United States is still a democracy, when instead it is a political and financial oligarchy dominated by Jews, through a personal form of dictatorship. The lie is that the Axis powers, after they finish Great Britain, want to attack America.",
+      "photo": "mussolini_1941/chamber_speech_1941-06-10.jpg",
+      "label": "Antisemitic claim, not endorsed"
+    },
+    {
+      "narration": "Neither in Rome nor Berlin are such fantastic plans as this prepared. These projects could not be made by those who have an inclination for the madhouse. Though we certainly are totalitarian and will always be so, we have our feet on hard ground. Americans who will read what I say should be calm and not believe in the existence of a big bad wolf who wants to devour them.",
+      "photo": "mussolini_1941/hitler_mussolini_1941.jpg",
+      "label": "Hitler and Mussolini, Aug. 1941"
+    },
+    {
+      "narration": "In all cases it is more likely that the United States, before it is attacked by Axis soldiers, will be attacked by the not well known but very warlike inhabitants of the planet Mars, who will descend from the stratosphere in unimaginable flying fortresses.",
+      "photo": "mussolini_1941/chamber_overview_1941-06-10.jpg",
+      "label": "The Chamber, June 1941"
+    }
+  ]
+}

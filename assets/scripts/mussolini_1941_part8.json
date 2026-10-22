@@ -1,0 +1,33 @@
+{
+  "title": "Mussolini, Feb. 23, 1941: Part 8",
+  "topic": "Mussolini's February 23, 1941 speech to the Blackshirts of Rome, Part 8 (English translation, radio-style, with dated archival photographs)",
+  "era": "early_1900s",
+  "setting": "europe",
+  "narration_audio": "assets/audio/mussolini_1941_part8.wav",
+  "audio_fx": "radio",
+  "music": "rotate",
+  "music_volume": 0.1,
+  "caption_extra": "Part 8 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "beats": [
+    {
+      "narration": "Great Britain cannot win the war. I can prove this logically and in this case belief is corroborated by fact. This proof begins with the dogmatic premise that although anything may happen Italy will march with Germany, side by side, to the end.",
+      "photo": "mussolini_1941/hitler_mussolini_1934.jpg",
+      "label": "Hitler and Mussolini, 1934"
+    },
+    {
+      "narration": "Those who may be tempted to imagine something different forget that the alliance between Italy and Germany is not only between two States or two armies or two diplomacies but between two peoples and two revolutions and is destined to give its imprint upon the century.",
+      "photo": "mussolini_1941/hitler_mussolini_1941.jpg",
+      "label": "Hitler and Mussolini, Aug. 1941"
+    },
+    {
+      "narration": "The collaboration offered by the Fuehrer and that which the German air and armored units are giving in the Mediterranean are proof that all fronts are common and that our efforts are common. The Germans know that Italy today has on her shoulders the weight of 1,000,000 British and Greek soldiers, of from 1,500 to 2,000 planes, of as many tanks, of thousands of cannon, of at least 500,000 tons of military shipping.",
+      "photo": "mussolini_1941/beda_fomm_tanks_1941-02.jpg",
+      "label": "Captured tanks, Beda Fomm, 1941"
+    },
+    {
+      "narration": "Cooperation between the two armed forces occurs on the plan of comradely, loyal, spontaneous solidarity. Let it be said for foreigners who are always ready to libel that the comportment of German soldiers in Sicily and Libya is under all respects perfect and worthy of a strong army and a strong people brought up under severe discipline. Follow me now please:",
+      "photo": "mussolini_1941/chamber_speech_1941-06-10.jpg",
+      "label": "Mussolini in the Chamber, June 1941"
+    }
+  ]
+}

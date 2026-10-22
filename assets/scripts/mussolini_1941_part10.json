@@ -1,0 +1,28 @@
+{
+  "title": "Mussolini, Feb. 23, 1941: Part 10",
+  "topic": "Mussolini's February 23, 1941 speech to the Blackshirts of Rome, Part 10 (English translation, radio-style, with dated archival photographs)",
+  "era": "early_1900s",
+  "setting": "europe",
+  "narration_audio": "assets/audio/mussolini_1941_part10.wav",
+  "audio_fx": "radio",
+  "music": "rotate",
+  "music_volume": 0.1,
+  "caption_extra": "Part 10 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "beats": [
+    {
+      "narration": "Third, while during the World War Germany was isolated from Europe and the world, today the Axis is master of the Continent and allied with Japan. The Scandinavian world (Finland, Sweden, Norway, Denmark) is directly or indirectly inside the German orbit. The Danubian and Balkan world cannot ignore and does not ignore the Axis, Hungary and Rumania have joined the Tripartite Pact. Occupied France, Belgium, Holland and Luxembourg are, like the Scandinavian and Danubian worlds, within the orbit of Germany. In the Mediterranean Italy is allied with a friendly Spain. There remains Russia, but her fundamental interests advise her also to follow in the future a good-neighbor policy with Germany. Europe therefore, with the exception of Portugal, Switzerland and, for a little while yet, Greece, is all outside the orbit of Britain and against Britain.",
+      "photo": "mussolini_1941/bordighera_franco_1941-02-12.jpg",
+      "label": "With Franco, Bordighera, Feb. 1941"
+    },
+    {
+      "narration": "Fourth, with this situation things are diametrically opposed to conditions from 1914 to 1918. Then the blockade was a terrible weapon in the hands of Great Britain. Today this is a broken weapon because, from being a blockading nation, Britain became blockaded by the Axis air and naval forces and will increasingly be blockaded until catastrophe comes.",
+      "photo": "mussolini_1941/cavour_after_taranto_1940.jpg",
+      "label": "Cavour after Taranto raid, 1940"
+    },
+    {
+      "narration": "Fifth, the morale of the Axis people is infinitely superior to the morale of the British people. The Axis fights in certainty of victory, while the British fight because, as Lord Halifax said, they have no other choice. It is highly ridiculous to count on the eventual moral breakdown of the Italian people. This will never happen. To speak of a separate peace is idiotic.",
+      "photo": "mussolini_1941/piazza_venezia_1940.jpg",
+      "label": "Rome crowd, 1940 (other occasion)"
+    }
+  ]
+}

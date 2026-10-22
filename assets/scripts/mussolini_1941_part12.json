@@ -1,0 +1,28 @@
+{
+  "title": "Mussolini, Feb. 23, 1941: Part 12",
+  "topic": "Mussolini's February 23, 1941 speech to the Blackshirts of Rome, Part 12 (English translation, radio-style, with dated archival photographs)",
+  "era": "early_1900s",
+  "setting": "europe",
+  "narration_audio": "assets/audio/mussolini_1941_part12.wav",
+  "audio_fx": "radio",
+  "music": "rotate",
+  "music_volume": 0.1,
+  "caption_extra": "Part 12 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "beats": [
+    {
+      "narration": "Eighth, in this gigantic struggle Italy has a first-class job. Our war power also improves daily in quality and quantity. Two of the three great ships damaged at Taranto are already in the way of complete repair. Technicians and workers toiled day and night, giving a convincing demonstration not only of their professional capacity but also of their patriotism. When the war is over, in the world's social revolution that will be followed by a more equitable distribution of the earth's riches, due account must be kept of the sacrifices and of the discipline maintained by the Italian workers. The Fascist revolution will make another decisive step to shorten social distances.",
+      "photo": "mussolini_1941/cavour_after_taranto_1940.jpg",
+      "label": "Cavour after Taranto raid, 1940"
+    },
+    {
+      "narration": "Ninth, that Fascist Italy dared measure herself against Great Britain is a matter of pride that will live through the centuries. It was an act of conscious daring. People become great by daring, risking and suffering, and not by placing themselves by the wayside in parasitic and vile expectancy. The protagonists of history can revindicate their rights, but simple spectators never can.",
+      "photo": "mussolini_1941/crowd_1926.jpg",
+      "label": "Rally crowd, 1926 (other occasion)"
+    },
+    {
+      "narration": "Tenth, to beat the Axis, Great Britain's armies would have to land on the Continent, invade Germany and Italy and defeat their armies, and this no Englishman, no matter how insane and delirious by the use and abuse of drugs and alcohol, can even dream of.",
+      "photo": "mussolini_1941/officials_1928.jpg",
+      "label": "Mussolini with officials, 1928"
+    }
+  ]
+}

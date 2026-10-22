@@ -1462,6 +1462,7 @@ def main() -> int:
     voice_path, length_scale = "", 1.0
     narration_audio = ""
     audio_opts = {}
+    music_credit = ""
     if script_file:
         # A hand-written script (e.g. a translated speech with archival photos)
         # instead of an LLM-written one. Path is relative to the repo root.
@@ -1525,15 +1526,25 @@ def main() -> int:
 
         base_name = f"{next_index():03d}_{slugify(title)}"
         out_video = REVIEW_DIR / f"{base_name}.mp4"
+        music = audio_opts.get("music", "")
+        if music == "rotate":
+            # A different public-domain track every clip, cycling through assets/audio/music/.
+            tracks = sorted((REPO_ROOT / "assets" / "audio" / "music").glob("*.mp3"))
+            music = tracks[(next_index() - 1) % len(tracks)].relative_to(REPO_ROOT).as_posix() if tracks else ""
+        if music:
+            credits_path = REPO_ROOT / "assets" / "audio" / "music" / "CREDITS.json"
+            credit = json.loads(credits_path.read_text(encoding="utf-8")).get(Path(music).name, "") if credits_path.is_file() else ""
+            music_credit = f"Music: {credit} (public domain, via Wikimedia Commons)." if credit else ""
+            print(f"Music: {music}")
         audio_for_video = mix_audio(
             narration_path, tmp_path / "mixed.wav", duration, fx=audio_opts.get("audio_fx", ""),
-            music=audio_opts.get("music", ""), music_volume=float(audio_opts.get("music_volume", 0.3)))
+            music=music, music_volume=float(audio_opts.get("music_volume", 0.3)))
         assemble_video(title, frames_dir, audio_for_video, captions_path, duration, out_video, tmp_path)
         print(f"Assembled {out_video.name}")
 
     caption = f"{title} \U0001f4dc #history #historytok #didyouknow #education"
-    if caption_extra:
-        caption = f"{caption_extra}\n\n{caption}"
+    if caption_extra or music_credit:
+        caption = f"{(caption_extra + chr(32) + music_credit).strip()}\n\n{caption}"
     (REVIEW_DIR / f"{base_name}.json").write_text(
         json.dumps({"caption": caption, "topic": topic}, ensure_ascii=False, indent=2),
         encoding="utf-8",

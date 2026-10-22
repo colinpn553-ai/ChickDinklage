@@ -5,29 +5,29 @@
   "setting": "europe",
   "narration_audio": "assets/audio/mussolini_1941_part2.wav",
   "audio_fx": "radio",
-  "music": "assets/audio/verdi_forza_overture_toscanini_1944.mp3",
+  "music": "rotate",
   "music_volume": 0.35,
-  "caption_extra": "Part 2 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time (excerpts; Part 1 is the opening). Read by a synthetic voice with a vintage-radio effect, not Mussolini's. Music: Verdi, La forza del destino overture, Toscanini, 1944 (public domain). No freely licensed photos of this exact speech exist in the archives checked; these public-domain photos are from Feb.-Aug. 1941 and are dated on screen.",
+  "caption_extra": "Part 2 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where Part 1 ended. His claims here, including about a 'Masonic, democratic, capitalistic world,' are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions and are dated on screen.",
   "beats": [
     {
-      "narration": "But developments in history, which sometimes are speeded up, cannot be halted any more than the fleeting moment of Faust could be halted. History takes one by the throat and forces a decision. This is not the first time this has occurred in the history of Italy! If we had been 100 per cent ready we would have entered the war in September, 1939, and not in June, 1940. During that brief period of time we faced and overcame exceptional difficulties.",
+      "narration": "We have actually been at war since 1922, that is, from the day when we lifted the flag of our revolution, which was then defended by a handful of men against the Masonic, democratic, capitalistic world. From that day world liberalism, democracy and plutocracy declared and waged war against us with press campaigns, spreading libelous reports, financial sabotage, attempts and plots, even when we were intent upon the work of international reconstruction, which is and will remain for centuries, as the undestroyable documentation of our creative will.",
+      "photo": "mussolini_1941/piazza_venezia_1940.jpg",
+      "label": "Rome crowd, 1940 (other occasion)"
+    },
+    {
+      "narration": "With the outbreak of hostilities on September 1, 1939, we had just finished two wars which imposed relatively modest sacrifices in human life, but had forced us to make an enormous logistic and financial effort.",
+      "photo": "mussolini_1941/podium_1932.jpg",
+      "label": "Mussolini, 1932 (other occasion)"
+    },
+    {
+      "narration": "On another occasion, not to tire you with too many figures, our intervention in the Falangist Revolution will be documented. This is why, and was publicly declared in December, 1939, when the reckoning of accounts had to be reached between two worlds which were inevitably antagonistic, we preferred to have it retarded as long as necessary for us to replace that which we consumed or ceded.",
       "photo": "mussolini_1941/bordighera_franco_1941-02-12.jpg",
       "label": "With Franco, Bordighera, Feb. 12, 1941"
     },
     {
-      "narration": "In reality the moment was timely because if it is true that one enemy was in the course of liquidation there remained the other, the bigger one, the most powerful enemy number one, against whom we are engaged, and against whom we will continue the struggle to the last drop of blood.",
+      "narration": "But developments in history, which sometimes are speeded up, cannot be halted any more than the fleeting moment of Faust could be halted. History takes one by the throat and forces a decision. This is not the first time this has occurred in the history of Italy! If we had been 100 per cent ready we would have entered the war in September, 1939, and not in June, 1940. During that brief period of time we faced and overcame exceptional difficulties.",
       "photo": "mussolini_1941/chamber_speech_1941-06-10.jpg",
       "label": "Mussolini in the Chamber, June 10, 1941"
-    },
-    {
-      "narration": "We must recognize this. We had gray days. This happens in all wars, in all times. Think of the Punic Wars, when the Battle of Cannae threatened to crush Rome. But at Zama, Rome destroyed Carthage and wiped it out from geography and history forever. Our capacity to recuperate in moral and material fields is really formidable, and constitutes one of the peculiar characteristics of our race.",
-      "photo": "mussolini_1941/chamber_overview_1941-06-10.jpg",
-      "label": "The Chamber, June 10, 1941"
-    },
-    {
-      "narration": "That we shall have to fight hard is certain. That we shall have to fight long is also probable. But the final result will be an Axis victory.",
-      "photo": "mussolini_1941/hitler_mussolini_1941_part2.jpg",
-      "label": "Hitler and Mussolini, Aug. 1941"
     }
   ],
   "music_start": 0

@@ -19,7 +19,7 @@ on:
         options: ["", "europe", "south_asia", "africa", "cuba", "global"]
 
       script_file:
-        description: "Optional: path to a hand-written script JSON (e.g. assets/scripts/mussolini_1925_speech.json) used instead of an LLM-written one"
+        description: "Optional: path to a hand-written script JSON (e.g. assets/scripts/mussolini_1941_speech.json) used instead of an LLM-written one"
         required: false
         type: string
 

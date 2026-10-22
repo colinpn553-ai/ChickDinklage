@@ -264,4 +264,4 @@ faithful, narrate context around them, and only use photos whose license
 allows reuse (Wikimedia Commons public domain / CC), labelling any photo
 from a different occasion than the words being narrated. Put the source
 and photo credit in `caption_extra`. Example:
-`assets/scripts/mussolini_1925_speech.json`.
+`assets/scripts/mussolini_1941_speech.json`.

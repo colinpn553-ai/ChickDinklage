@@ -1528,13 +1528,13 @@ def main() -> int:
         out_video = REVIEW_DIR / f"{base_name}.mp4"
         music = audio_opts.get("music", "")
         if music == "rotate":
-            # A different public-domain track every clip, cycling through assets/audio/music/.
+            # A different track every clip, cycling through assets/audio/music/.
             tracks = sorted((REPO_ROOT / "assets" / "audio" / "music").glob("*.mp3"))
             music = tracks[(next_index() - 1) % len(tracks)].relative_to(REPO_ROOT).as_posix() if tracks else ""
         if music:
             credits_path = REPO_ROOT / "assets" / "audio" / "music" / "CREDITS.json"
             credit = json.loads(credits_path.read_text(encoding="utf-8")).get(Path(music).name, "") if credits_path.is_file() else ""
-            music_credit = f"Music: {credit} (public domain, via Wikimedia Commons)." if credit else ""
+            music_credit = f"Music: {credit}." if credit else ""
             print(f"Music: {music}")
         audio_for_video = mix_audio(
             narration_path, tmp_path / "mixed.wav", duration, fx=audio_opts.get("audio_fx", ""),

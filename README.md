@@ -265,3 +265,14 @@ allows reuse (Wikimedia Commons public domain / CC), labelling any photo
 from a different occasion than the words being narrated. Put the source
 and photo credit in `caption_extra`. Example:
 `assets/scripts/mussolini_1941_speech.json`.
+
+### Music
+
+`"music": "rotate"` in a script file lays a different track under the voice
+each clip, cycling through `assets/audio/music/*.mp3` (ducked while the
+voice speaks). The tracks are original beats from `scripts/make_beat.py`
+(numpy + ffmpeg only; styles `noir` -- slow, dark and reverb-heavy --
+`phonk`, `drill`, `trap`, `cinematic`), so there are no third-party
+rights to clear. Commercial/trending songs can't be used: the posting API
+can't attach songs from Instagram's music library, and uploaded
+copyrighted audio gets muted or claimed.

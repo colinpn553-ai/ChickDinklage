@@ -6,23 +6,23 @@
   "narration_audio": "assets/audio/mussolini_1941_opening.wav",
   "audio_fx": "radio",
   "music": "rotate",
-  "music_volume": 0.1,
-  "caption_extra": "The opening of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. Music: Verdi, La forza del destino overture, Toscanini, 1944 (public domain, via Wikimedia Commons). Archival photos are public domain via Wikimedia Commons and are from other occasions, not this speech.",
+  "music_volume": 0.2,
+  "caption_extra": "Part 1 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, in English.",
   "beats": [
     {
       "narration": "Blackshirts of Rome! I come among you to look you firmly in the eyes, feel your temperature and break the silence which is dear to me, especially in wartime.",
       "photo": "mussolini_1941/piazza_venezia_1940.jpg",
-      "label": "Rome crowd, 1940 (other occasion)"
+      "label": "Rome crowd, 1940"
     },
     {
       "narration": "Have you ever asked yourselves, in an hour of meditation, which every one finds during the day, how long we have been at war. Not only eight months, as a superficial observer of events might believe, not from September 1, 1939, when through guarantees to Poland, Britain unleashed the conflagration with a criminal and premeditated will.",
       "photo": "mussolini_1941/podium_1932.jpg",
-      "label": "Mussolini, 1932 (other occasion)"
+      "label": "Mussolini, 1932"
     },
     {
       "narration": "We have been at war six years, precisely from February 1, 1935, when the first communiqué announcing the mobilization of Peloritana was issued.",
       "photo": "mussolini_1941/crowd_1926.jpg",
-      "label": "Rally crowd, 1926 (other occasion)"
+      "label": "Rally crowd, 1926"
     },
     {
       "narration": "The Ethiopian war was hardly finished when from the other shore of the Mediterranean there reached us appeals from General Franco, who had begun his national revolution. Could we Fascisti leave without answer that cry and remain indifferent in the face of the perpetuation of the bloody crimes of the so-called popular fronts?",

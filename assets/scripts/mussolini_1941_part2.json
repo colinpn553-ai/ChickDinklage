@@ -6,18 +6,18 @@
   "narration_audio": "assets/audio/mussolini_1941_part2.wav",
   "audio_fx": "radio",
   "music": "rotate",
-  "music_volume": 0.1,
-  "caption_extra": "Part 2 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where Part 1 ended. His claims here, including about a 'Masonic, democratic, capitalistic world,' are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions and are dated on screen.",
+  "music_volume": 0.2,
+  "caption_extra": "Part 2 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, in English.",
   "beats": [
     {
       "narration": "We have actually been at war since 1922, that is, from the day when we lifted the flag of our revolution, which was then defended by a handful of men against the Masonic, democratic, capitalistic world. From that day world liberalism, democracy and plutocracy declared and waged war against us with press campaigns, spreading libelous reports, financial sabotage, attempts and plots, even when we were intent upon the work of international reconstruction, which is and will remain for centuries, as the undestroyable documentation of our creative will.",
       "photo": "mussolini_1941/piazza_venezia_1940.jpg",
-      "label": "Rome crowd, 1940 (other occasion)"
+      "label": "Rome crowd, 1940"
     },
     {
       "narration": "With the outbreak of hostilities on September 1, 1939, we had just finished two wars which imposed relatively modest sacrifices in human life, but had forced us to make an enormous logistic and financial effort.",
       "photo": "mussolini_1941/podium_1932.jpg",
-      "label": "Mussolini, 1932 (other occasion)"
+      "label": "Mussolini, 1932"
     },
     {
       "narration": "On another occasion, not to tire you with too many figures, our intervention in the Falangist Revolution will be documented. This is why, and was publicly declared in December, 1939, when the reckoning of accounts had to be reached between two worlds which were inevitably antagonistic, we preferred to have it retarded as long as necessary for us to replace that which we consumed or ceded.",

@@ -6,8 +6,8 @@
   "narration_audio": "assets/audio/mussolini_1941_part7.wav",
   "audio_fx": "radio",
   "music": "rotate",
-  "music_volume": 0.1,
-  "caption_extra": "Part 7 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "music_volume": 0.2,
+  "caption_extra": "Part 7 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, in English.",
   "beats": [
     {
       "narration": "Not less heavy are the losses we inflicted on the English. To state as they do that their losses in the battle of sixty days in Cyrenaica are not above 2,000 dead and wounded means adding a grotesque note to the drama. It means attempting to exceed themselves as far as shameless lies are concerned, which should seem difficult for the English. They must add at least one zero to the figures of their communiqués.",
@@ -22,7 +22,7 @@
     {
       "narration": "This happens in all wars, in all times. Think of the Punic Wars when the Battle of Cannae threatened to crush Rome. But at Zama, Rome destroyed Carthage and wiped it out from geography and history forever. Our capacity to recuperate in moral and material fields is really formidable and constitutes one of the peculiar characteristics of our race.",
       "photo": "mussolini_1941/crowd_1926.jpg",
-      "label": "Rally crowd, 1926 (other occasion)"
+      "label": "Rally crowd, 1926"
     },
     {
       "narration": "Especially in this war, which has the world as its theatre and pits continents directly or indirectly one against another. On land and sea and in the air it is the final battle that counts. That we shall have to fight hard is certain, that we shall have to fight long is also probable, but the final result will be an Axis victory.",

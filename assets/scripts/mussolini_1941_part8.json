@@ -6,8 +6,8 @@
   "narration_audio": "assets/audio/mussolini_1941_part8.wav",
   "audio_fx": "radio",
   "music": "rotate",
-  "music_volume": 0.1,
-  "caption_extra": "Part 8 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "music_volume": 0.2,
+  "caption_extra": "Part 8 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, in English.",
   "beats": [
     {
       "narration": "Great Britain cannot win the war. I can prove this logically and in this case belief is corroborated by fact. This proof begins with the dogmatic premise that although anything may happen Italy will march with Germany, side by side, to the end.",

@@ -6,8 +6,8 @@
   "narration_audio": "assets/audio/mussolini_1941_part3.wav",
   "audio_fx": "radio",
   "music": "rotate",
-  "music_volume": 0.1,
-  "caption_extra": "Part 3 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "music_volume": 0.2,
+  "caption_extra": "Part 3 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, in English.",
   "beats": [
     {
       "narration": "The lightning-like and crushing victory of Germany in the West eliminated the eventuality of a long continental war. Since then the land war on the Continent has ended and it cannot flare back. The German victory was facilitated by Italian non-belligerency which immobilized heavy naval, air and land forces of the Anglo-French bloc. Some people who today apparently think Italy's intervention was premature were probably the same who then I deemed it too late.",
@@ -17,7 +17,7 @@
     {
       "narration": "In reality the moment was timely because if it is true that one enemy was in the course of liquidation there remained the other, the bigger one, the most powerful enemy number one against whom we are engaged and against whom we will continue the struggle to the last drop of blood.",
       "photo": "mussolini_1941/piazza_venezia_1940.jpg",
-      "label": "Rome crowd, 1940 (other occasion)"
+      "label": "Rome crowd, 1940"
     },
     {
       "narration": "Having definitely liquidated Britain's armies on the European Continent, the war could not but assume a naval, air and, for us, also a colonial character. It is the geographic and historic order of things that the most difficult and most faraway theatres of war are reserved for Italy. War beyond the sea and in the desert. Our fronts stretch for thousands of kilometers and are thousands of kilometers away. Some ignorant foreign commentators should take due account of this. However, during the first four months of the war we were able to inflict grave naval, air and land blows to the forces of the British Empire.",

@@ -6,13 +6,13 @@
   "narration_audio": "assets/audio/mussolini_1941_part4.wav",
   "audio_fx": "radio",
   "music": "rotate",
-  "music_volume": 0.1,
-  "caption_extra": "Part 4 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "music_volume": 0.2,
+  "caption_extra": "Part 4 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, in English.",
   "beats": [
     {
       "narration": "Since 1935 the attention of our general staff has been focused on Libya. All the work of the Governors who succeeded each other in Libya was aimed at strengthening economically and militarily that large region, transforming the former desert or desert zones into fecund land. Miracles! This word is able to sum up what has been done down there. With European tension becoming graver, and following the events of 1935 and 1936, Libya, reconquered by Fascism, was considered one of the most delicate points in our general strategic setup, since it could be attacked from two fronts.",
       "photo": "mussolini_1941/podium_1932.jpg",
-      "label": "Mussolini, 1932 (other occasion)"
+      "label": "Mussolini, 1932"
     },
     {
       "narration": "The effort carried out militarily to strengthen Libya is shown by these figures.",
@@ -27,7 +27,7 @@
     {
       "narration": "These figures show that to the preparation of the Libyan defense we devoted an effort which can be described as imposing. The same thing can be said as far as East Africa is concerned, where we were prepared to resist despite the distance and total isolation, which is a tribute to the will and courage of our soldiers. The soldiers who are fighting in the empire, without any hope of help, are farthest but therefore nearest our hearts. Commanded by the born soldier the Viceroy is and by a group of generals of great valor, the national and native soldiers will cause great trouble to the enemy.",
       "photo": "mussolini_1941/crowd_1926.jpg",
-      "label": "Rally crowd, 1926 (other occasion)"
+      "label": "Rally crowd, 1926"
     }
   ]
 }

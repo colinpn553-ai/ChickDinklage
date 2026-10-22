@@ -6,23 +6,23 @@
   "narration_audio": "assets/audio/mussolini_1941_part14.wav",
   "audio_fx": "radio",
   "music": "rotate",
-  "music_volume": 0.1,
-  "caption_extra": "Part 14 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, as translated into English at the time, continuing exactly where the previous part ended, nothing skipped. His claims are historical record, not endorsed. Read by a synthetic voice with a vintage-radio effect, not Mussolini's. No freely licensed photos of this exact speech were found; these public-domain photos are from other occasions or show the events he discusses, and are dated on screen.",
+  "music_volume": 0.2,
+  "caption_extra": "Part 14 of Mussolini's February 23, 1941 speech to the Blackshirts of Rome, in English.",
   "beats": [
     {
       "narration": "Rome comrades! Through you I want to speak to the Italian people, to the authentic, real, great Italian people, who fight with the courage of lions on land, sea and air fronts; people who early in the morning are up to go to work in fields, factories and offices; people who do not permit themselves luxuries, not even innocent ones.",
       "photo": "mussolini_1941/piazza_venezia_1940.jpg",
-      "label": "Rome crowd, 1940 (other occasion)"
+      "label": "Rome crowd, 1940"
     },
     {
       "narration": "They absolutely must not be confused or contaminated by the minority or well-known poltroons, anti-social individuals and complainers, who grumble about rations and regret their suspended comforts, or by snakes, the remains of the Masonic lodges, whom we will crush without difficulties when and how we want.",
       "photo": "mussolini_1941/podium_1932.jpg",
-      "label": "Mussolini, 1932 (other occasion)"
+      "label": "Mussolini, 1932"
     },
     {
       "narration": "The Italian people, the Fascist people deserve and will have victory. The hardships, suffering and sacrifices that are faced with exemplary courage and dignity by the Italian people will have their day of compensation when all the enemy forces are crushed on the battlefields by the heroism of our soldiers and a triple, immense cry will cross the mountains and oceans like lightning and light new hopes and give new certainties to spirit multitudes: Victory, Italy, peace with justice among peoples!",
       "photo": "mussolini_1941/crowd_1926.jpg",
-      "label": "Rally crowd, 1926 (other occasion)"
+      "label": "Rally crowd, 1926"
     }
   ]
 }

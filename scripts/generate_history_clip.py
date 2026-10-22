@@ -1410,16 +1410,16 @@ def mix_audio(narration_path: Path, out_path: Path, duration: float, fx: str = "
     voice = "aformat=channel_layouts=mono,aresample=22050"
     if fx == "radio":
         voice += (",highpass=f=300,lowpass=f=3400,acompressor=threshold=0.08:ratio=6:attack=5:release=60,"
-                  "volume=1.8,asoftclip=type=tanh,aecho=0.8:0.5:25:0.2")
+                  "volume=2.4,asoftclip=type=tanh,aecho=0.8:0.5:25:0.2")
     inputs = ["-i", str(narration_path)]
     parts = []
     mixed = ["[v2]"]
     if music:
         inputs += ["-stream_loop", "-1", "-i", str(REPO_ROOT / music)]
         parts.append(f"[0:a]{voice},asplit=2[v1][v2]")
-        parts.append(f"[1:a]aformat=channel_layouts=mono,aresample=22050,highpass=f=150,lowpass=f=5000,"
+        parts.append(f"[1:a]aformat=channel_layouts=mono,aresample=22050,highpass=f=200,lowpass=f=4500,"
                      f"volume={music_volume}[m0]")
-        parts.append("[m0][v1]sidechaincompress=threshold=0.03:ratio=6:attack=10:release=300[md]")
+        parts.append("[m0][v1]sidechaincompress=threshold=0.02:ratio=10:attack=5:release=350[md]")
         mixed.append("[md]")
     else:
         parts.append(f"[0:a]{voice}[v2]")

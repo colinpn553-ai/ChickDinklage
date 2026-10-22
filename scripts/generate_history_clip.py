@@ -1399,6 +1399,42 @@ def assemble_video(
     )
 
 
+
+def mix_audio(narration_path: Path, out_path: Path, duration: float, fx: str = "", music: str = "",
+              music_volume: float = 0.3) -> Path:
+    """Optional audio dressing: fx="radio" band-limits and saturates the voice
+    like an old AM broadcast and adds a little hiss; `music` (a file path in
+    the repo) is laid under the voice, ducked while it speaks, and faded out."""
+    if not fx and not music:
+        return narration_path
+    voice = "aformat=channel_layouts=mono,aresample=22050"
+    if fx == "radio":
+        voice += (",highpass=f=300,lowpass=f=3400,acompressor=threshold=0.08:ratio=6:attack=5:release=60,"
+                  "volume=1.8,asoftclip=type=tanh,aecho=0.8:0.5:25:0.2")
+    inputs = ["-i", str(narration_path)]
+    parts = []
+    mixed = ["[v2]"]
+    if music:
+        inputs += ["-stream_loop", "-1", "-i", str(REPO_ROOT / music)]
+        parts.append(f"[0:a]{voice},asplit=2[v1][v2]")
+        parts.append(f"[1:a]aformat=channel_layouts=mono,aresample=22050,highpass=f=150,lowpass=f=5000,"
+                     f"volume={music_volume}[m0]")
+        parts.append("[m0][v1]sidechaincompress=threshold=0.03:ratio=6:attack=10:release=300[md]")
+        mixed.append("[md]")
+    else:
+        parts.append(f"[0:a]{voice}[v2]")
+    n_in = inputs.count("-i")
+    if fx == "radio":
+        inputs += ["-f", "lavfi", "-i", "anoisesrc=color=pink:amplitude=0.02:sample_rate=22050"]
+        parts.append(f"[{n_in}:a]aformat=channel_layouts=mono[n]")
+        mixed.append("[n]")
+    parts.append("".join(mixed) + f"amix=inputs={len(mixed)}:duration=first:normalize=0,"
+                 f"afade=t=out:st={max(duration - 2, 0):.2f}:d=2,loudnorm=I=-16:TP=-1.5[out]")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *inputs, "-filter_complex", ";".join(parts),
+                    "-map", "[out]", "-t", f"{duration:.2f}", str(out_path)], check=True)
+    return out_path
+
+
 def slugify(title: str) -> str:
     slug = "".join(c.lower() if c.isalnum() else "_" for c in title)
     while "__" in slug:
@@ -1425,6 +1461,7 @@ def main() -> int:
     caption_extra = ""
     voice_path, length_scale = "", 1.0
     narration_audio = ""
+    audio_opts = {}
     if script_file:
         # A hand-written script (e.g. a translated speech with archival photos)
         # instead of an LLM-written one. Path is relative to the repo root.
@@ -1433,6 +1470,7 @@ def main() -> int:
         caption_extra = sd.get("caption_extra", "")
         voice_path, length_scale = sd.get("voice", ""), float(sd.get("length_scale", 1.0))
         narration_audio = sd.get("narration_audio", "")  # pre-recorded/synthesized audio file in the repo
+        audio_opts = {k: sd[k] for k in ("audio_fx", "music", "music_volume") if k in sd}
         topic = sd.get("topic", topic)
         for b in beats:
             b.setdefault("scene", "photo" if b.get("photo") else "map")
@@ -1487,7 +1525,10 @@ def main() -> int:
 
         base_name = f"{next_index():03d}_{slugify(title)}"
         out_video = REVIEW_DIR / f"{base_name}.mp4"
-        assemble_video(title, frames_dir, narration_path, captions_path, duration, out_video, tmp_path)
+        audio_for_video = mix_audio(
+            narration_path, tmp_path / "mixed.wav", duration, fx=audio_opts.get("audio_fx", ""),
+            music=audio_opts.get("music", ""), music_volume=float(audio_opts.get("music_volume", 0.3)))
+        assemble_video(title, frames_dir, audio_for_video, captions_path, duration, out_video, tmp_path)
         print(f"Assembled {out_video.name}")
 
     caption = f"{title} \U0001f4dc #history #historytok #didyouknow #education"

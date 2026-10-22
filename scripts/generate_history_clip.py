@@ -212,20 +212,31 @@ def generate_script(topic: str) -> tuple[str, str, str, list[dict]]:
     return title, era, setting, beats
 
 
-def synthesize_narration(full_text: str, voice_dir: Path, out_path: Path) -> None:
+def synthesize_narration(full_text: str, voice_dir: Path, out_path: Path, length_scale: float = 1.0) -> None:
     from piper import PiperVoice
 
     voice = PiperVoice.load(
         str(voice_dir / "voice.onnx"), config_path=str(voice_dir / "voice.onnx.json")
     )
+    kwargs = {}
+    if length_scale != 1.0:  # >1 = slower, more deliberate delivery (needs piper-tts with SynthesisConfig)
+        try:
+            from piper import SynthesisConfig
+            kwargs["syn_config"] = SynthesisConfig(length_scale=length_scale)
+        except ImportError:
+            pass
     with wave.open(str(out_path), "wb") as wav_file:
-        voice.synthesize_wav(full_text, wav_file)
+        voice.synthesize_wav(full_text, wav_file, **kwargs)
 
 
-def download_piper_voice(voice_dir: Path) -> None:
+def download_piper_voice(voice_dir: Path, voice_path: str = "") -> None:
+    """voice_path like "en/en_GB/alan/medium/en_GB-alan-medium" (a path inside
+    the rhasspy/piper-voices repo); blank = the default narrator voice."""
     voice_dir.mkdir(parents=True, exist_ok=True)
+    base = (f"https://huggingface.co/rhasspy/piper-voices/resolve/main/{voice_path}"
+            if voice_path else PIPER_VOICE_URL_BASE)
     for suffix, name in ((".onnx", "voice.onnx"), (".onnx.json", "voice.onnx.json")):
-        resp = requests.get(f"{PIPER_VOICE_URL_BASE}{suffix}", timeout=120)
+        resp = requests.get(f"{base}{suffix}", timeout=120)
         resp.raise_for_status()
         (voice_dir / name).write_bytes(resp.content)
 
@@ -1412,12 +1423,14 @@ def main() -> int:
 
     script_file = os.environ.get("HISTORY_SCRIPT", "").strip()
     caption_extra = ""
+    voice_path, length_scale = "", 1.0
     if script_file:
         # A hand-written script (e.g. a translated speech with archival photos)
         # instead of an LLM-written one. Path is relative to the repo root.
         sd = json.loads((REPO_ROOT / script_file).read_text(encoding="utf-8"))
         title, era, setting, beats = sd["title"], sd.get("era", "early_1900s"), sd.get("setting", "global"), sd["beats"]
         caption_extra = sd.get("caption_extra", "")
+        voice_path, length_scale = sd.get("voice", ""), float(sd.get("length_scale", 1.0))
         topic = sd.get("topic", topic)
         for b in beats:
             b.setdefault("scene", "photo" if b.get("photo") else "map")
@@ -1443,12 +1456,12 @@ def main() -> int:
         frames_dir = tmp_path / "frames"
         voice_dir = tmp_path / "voice"
 
-        download_piper_voice(voice_dir)
+        download_piper_voice(voice_dir, voice_path)
         print("Piper voice downloaded")
 
         full_text = " ".join(b["narration"] for b in beats)
         speech_text = spell_out_years(full_text)
-        synthesize_narration(speech_text, voice_dir, narration_path)
+        synthesize_narration(speech_text, voice_dir, narration_path, length_scale)
         print("Narration synthesized")
 
         whisper_words = transcribe_words(narration_path)
